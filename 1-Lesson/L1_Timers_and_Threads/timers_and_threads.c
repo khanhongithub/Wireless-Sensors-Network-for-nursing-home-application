@@ -39,7 +39,8 @@
 
 
 PROCESS(timers_and_threads_process, "Lesson 1: Timers and Threads");
-AUTOSTART_PROCESSES(&timers_and_threads_process);
+PROCESS(blue_blink, "Blue Blink");
+AUTOSTART_PROCESSES(&timers_and_threads_process, &blue_blink);
 
 //------------------------ PROCESS' THREAD ------------------------
 
@@ -52,7 +53,10 @@ PROCESS_THREAD(timers_and_threads_process, ev, data) {
     PROCESS_BEGIN();
 
 	static struct etimer freq_timer;
+	static struct timer stop_timer;  /*Exercise 3.3.2 Ex5 stop blink*/
 	etimer_set(&freq_timer, CLOCK_SECOND);
+	timer_set(&stop_timer, CLOCK_SECOND * 5);
+
 
     while (1){
     	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&freq_timer));
@@ -60,8 +64,29 @@ PROCESS_THREAD(timers_and_threads_process, ev, data) {
 		leds_toggle(LEDS_RED);
 			/* Reset Timer */
 		etimer_reset(&freq_timer);
+		if (timer_expired(&stop_timer)){
+			PROCESS_EXIT();
+		}
     }
 
     PROCESS_END();
 }
 
+PROCESS_THREAD(blue_blink, ev, data){
+    /*Exercise 3.3.2 Ex4 blue blink*/
+	PROCESS_EXITHANDLER( printf("blue blink terminated!\n"); )
+	PROCESS_BEGIN();
+
+	static struct etimer freq_timer;
+	etimer_set(&freq_timer, 0.25 * CLOCK_SECOND);
+
+	while (1){
+	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&freq_timer));
+	    	/* If timer expired, toggle LED*/
+		leds_toggle(LEDS_BLUE);
+			/* Reset Timer */
+		etimer_reset(&freq_timer);
+	}
+
+	PROCESS_END();
+}

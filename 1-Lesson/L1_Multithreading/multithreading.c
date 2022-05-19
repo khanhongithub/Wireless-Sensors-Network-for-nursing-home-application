@@ -37,13 +37,16 @@
 
 
 //--------------------- PROCESS CONTROL BLOCK ---------------------
+// Exercise 3.3.3 Ex 5 Rewrite code
 PROCESS(multithreading_proccess, "Lesson 1: Multithreading");
-AUTOSTART_PROCESSES(&multithreading_proccess);
+PROCESS(blue_blink, "blue blink");
+PROCESS(green_blink, "green blink");
+AUTOSTART_PROCESSES(&multithreading_proccess, &blue_blink, &green_blink);
 
 //------------------------ PROCESS' THREAD ------------------------
 PROCESS_THREAD(multithreading_proccess, ev, data){
 
-	static struct etimer timerRed, timerGreen, timerBlue;
+	static struct etimer timerRed;
 
 	PROCESS_BEGIN();
 
@@ -52,8 +55,6 @@ PROCESS_THREAD(multithreading_proccess, ev, data){
 	 * Set timers
 	 */
 	etimer_set(&timerRed, CLOCK_SECOND);
-	etimer_set(&timerGreen, CLOCK_SECOND/2);
-	etimer_set(&timerBlue, CLOCK_SECOND/4);
 
 	while(1) {
 		PROCESS_WAIT_EVENT();
@@ -62,19 +63,43 @@ PROCESS_THREAD(multithreading_proccess, ev, data){
 			leds_toggle(LEDS_RED);
 			etimer_reset(&timerRed);
 		}
-		else if(etimer_expired(&timerGreen)) {
-			printf("Timer expired for GREEN...\r\n");
-			leds_toggle(LEDS_GREEN);
-			etimer_reset(&timerGreen);
-		}
-		else if(etimer_expired(&timerBlue)) {
-			printf("Timer expired for BLUE...\r\n");
-			leds_toggle(LEDS_BLUE);
-			etimer_reset(&timerBlue);
-		}
 	}
 	PROCESS_END();
 }
 
+PROCESS_THREAD(green_blink, ev, data){
+	PROCESS_EXITHANDLER( printf("green blink terminated!\n"); )
+	PROCESS_BEGIN();
 
+	static struct etimer freq_timer;
+	etimer_set(&freq_timer, 0.5 * CLOCK_SECOND);
+
+	while (1){
+	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&freq_timer));
+	    	/* If timer expired, toggle LED*/
+		leds_toggle(LEDS_BLUE);
+			/* Reset Timer */
+		etimer_reset(&freq_timer);
+	}
+
+	PROCESS_END();
+}
+
+PROCESS_THREAD(blue_blink, ev, data){
+	PROCESS_EXITHANDLER( printf("blue blink terminated!\n"); )
+	PROCESS_BEGIN();
+
+	static struct etimer freq_timer;
+	etimer_set(&freq_timer, 0.25 * CLOCK_SECOND);
+
+	while (1){
+	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&freq_timer));
+	    	/* If timer expired, toggle LED*/
+		leds_toggle(LEDS_BLUE);
+			/* Reset Timer */
+		etimer_reset(&freq_timer);
+	}
+
+	PROCESS_END();
+}
 
