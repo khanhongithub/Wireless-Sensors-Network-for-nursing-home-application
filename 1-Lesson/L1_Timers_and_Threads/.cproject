@@ -73,7 +73,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration buildProperties="" description="Compile for Zolertia RE-mote and upload the program to the board" id="0.837015640.899728027" name="Upload" parent="org.eclipse.cdt.build.core.prefbase.cfg">
+				<configuration buildProperties="" description="Compile for Zolertia RE-mote and upload the program to the board" id="0.837015640.899728027" name="Upload" optionalBuildProperties="" parent="org.eclipse.cdt.build.core.prefbase.cfg">
 					<folderInfo id="0.837015640.899728027." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.cross.base.1727549658" name="Cross GCC" superClass="cdt.managedbuild.toolchain.gnu.cross.base">
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.2102142980" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix"/>
@@ -81,7 +81,7 @@
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.104232007" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
 							<builder arguments="TARGET=zoul BOARD=remote-revb timers_and_threads.upload" autoBuildTarget="all" cleanBuildTarget="clean" command="make" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" id="cdt.managedbuild.builder.gnu.cross.1510278223" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" parallelBuildOn="false" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.355782257" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
-								<option id="gnu.c.compiler.option.include.paths.1117259805" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.c.compiler.option.include.paths.1117259805" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${HOME}/contiki/&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${HOME}/contiki/cpu&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${HOME}/contiki/cpu/cc2538&quot;"/>
@@ -102,7 +102,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.linker.315046690" name="Cross G++ Linker" superClass="cdt.managedbuild.tool.gnu.cross.cpp.linker"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.1138036279" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.8247458" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler">
-								<option id="gnu.both.asm.option.include.paths.429930096" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="gnu.both.asm.option.include.paths.429930096" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${HOME}/contiki/&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${HOME}/contiki/cpu&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${HOME}/contiki/cpu/cc2538&quot;"/>
@@ -125,10 +125,10 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Default">
+		<configuration configurationName="Upload">
 			<resource resourceType="PROJECT" workspacePath="/L1 - Timers and Threads"/>
 		</configuration>
-		<configuration configurationName="Upload">
+		<configuration configurationName="Default">
 			<resource resourceType="PROJECT" workspacePath="/L1 - Timers and Threads"/>
 		</configuration>
 	</storageModule>

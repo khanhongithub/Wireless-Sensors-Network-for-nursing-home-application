@@ -25,46 +25,51 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-   LESSON 1: Debugging with Serial Port Terminal
+   LESSON 1: Timers and Threads
 */
+
 
 // Contiki-specific includes:
 #include "contiki.h"
-#include "dev/uart.h"
-#include "dev/leds.h"          // Use LEDs.
-#include "dev/serial-line.h"
+#include "dev/leds.h"			// Enables use of LEDs
+#include "sys/ctimer.h"
 
 
 // Standard C includes:
-#include <stdio.h>			// For printf.
+#include <stdio.h>		// For printf
 
 
-//--------------------- PROCESS CONTROL BLOCK ---------------------
-PROCESS(debug_process, "Lesson 1: Debugging");
-AUTOSTART_PROCESSES(&debug_process);
+PROCESS(timers_and_threads_process, "Lesson 1: Timers and Threads");
+AUTOSTART_PROCESSES(&timers_and_threads_process);
+
+static struct ctimer freq_timer;
+static void callback_function (void *data){
+	/* If timer expired, toggle LED*/
+	leds_toggle(LEDS_RED);
+  	ctimer_reset(&freq_timer);
+}
+
 
 //------------------------ PROCESS' THREAD ------------------------
-PROCESS_THREAD(debug_process, ev, data){
-	PROCESS_BEGIN();
 
-	printf("\nPlatform Zolertia RE-Mote\r\n");
-	printf("Hello world\n");
-	for(int i = 5; i <= 3056; i++){
-		printf("%d\n", i);
-	}
+// Main process:
+PROCESS_THREAD(timers_and_threads_process, ev, data) {
 
-    // Main process loop:
-    while(1) {
 
-    	/* NOTE: Contiki processes cannot start loops that never end.
-    	 * In order to stay safe, we need to wait for an event in here.
-    	 * When a Contiki process waits for events, it returns control
-    	 * to the Contiki kernel.
-    	 * The Contiki kernel will service other processes while this
-    	 * process is waiting.
-    	 */
-    	PROCESS_WAIT_EVENT();
+
+	PROCESS_EXITHANDLER( printf("main_process terminated!\n"); )
+
+
+    PROCESS_BEGIN();
+    ctimer_set(&freq_timer, CLOCK_SECOND, callback_function, NULL);
+
+    while (1){
+    	if(ctimer_expired(&freq_timer)){
+    		leds_toggle(LEDS_GREEN);
+    	}
     }
 
     PROCESS_END();
 }
+
+

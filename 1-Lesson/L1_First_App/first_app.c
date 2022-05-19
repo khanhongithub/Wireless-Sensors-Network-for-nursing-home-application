@@ -12,10 +12,10 @@ PROCESS_THREAD(first_process, ev, data){
     PROCESS_BEGIN();
     leds_off(LEDS_ALL);
     button_sensor.configure(BUTTON_SENSOR_CONFIG_TYPE_INTERVAL, CLOCK_SECOND*2);
-    char redon[] = "red.on";
-    char redoff[] = "red.off";
-    char blueon[] = "blue.on";
-    char blueoff[] = "blue.off";
+    char* redon = "red.on";
+    char* redoff = "red.off";
+    char* greenon = "green.on";
+    char* greenoff = "green.off";
     while(1) {
         PROCESS_WAIT_EVENT();
 
@@ -36,18 +36,18 @@ PROCESS_THREAD(first_process, ev, data){
            leds_toggle(LEDS_RED);
         }
 
-        if(ev == serial_line_event_message){
-        	if(strncmp(data, redon, 10)){
+        else if(ev == serial_line_event_message){
+        	if(strcmp(data, redon) == 0){
         		leds_on(LEDS_RED);
         	}
-        	else if(strncmp(data, redoff, 10)){
+        	else if(strcmp(data, redoff) == 0){
         	    leds_off(LEDS_RED);
         	}
-        	else if(strncmp(data, blueon, 10)){
-        	    leds_on(LEDS_BLUE);
+        	else if(strcmp(data, greenon) == 0){
+        	    leds_on(LEDS_GREEN);
         	        	}
-        	else if(strncmp(data, blueoff, 10)){
-        	    leds_off(LEDS_BLUE);
+        	else if(strcmp(data, greenoff) == 0){
+        	    leds_off(LEDS_GREEN);
         	}
         }
     }
