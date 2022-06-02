@@ -197,7 +197,7 @@ PROCESS_THREAD(routing_process, ev, data) {
 	packet_t tx_packet;
 
 	// Configure your team's channel (11 - 26).
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,14);
 
 	/* Configure the user button */
 	button_sensor.configure(BUTTON_SENSOR_CONFIG_TYPE_INTERVAL, CLOCK_SECOND);

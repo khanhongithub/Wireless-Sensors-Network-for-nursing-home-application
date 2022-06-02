@@ -87,7 +87,9 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 
 		printf("%s \n\r",rx_contacts.name);
 		printf("%s \n\r",rx_contacts.surname);
-		printf("%s \n\r",rx_contacts.tel);
+		 for(int i=0;i<=MAX_N;i++){
+		        	printf("%d",rx_contacts.tel[i]);
+		        }
 
 	leds_off(LEDS_GREEN);
 }

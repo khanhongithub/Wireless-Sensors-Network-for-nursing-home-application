@@ -48,6 +48,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
 			(char *)packetbuf_dataptr(),
 			(int16_t)packetbuf_attr(PACKETBUF_ATTR_RSSI));
 	leds_off(LEDS_GREEN);
+
+	forward_msg((char *)packetbuf_dataptr());
 }
 
 // Creates an instance of a broadcast connection.
@@ -95,6 +97,18 @@ static void print_settings(void){
 	printf("---------------------------------------\n");
 }
 
+
+void forward_msg(const char * message) {
+//open the connection, if necessary
+	broadcast_open(&broadcast, 129, &broadcast_call);
+//send the message
+	leds_on(LEDS_BLUE);
+    packetbuf_copyfrom(message, 6);
+	broadcast_send(&broadcast);
+	printf("A received packet forwarded.\n");
+	leds_off(LEDS_BLUE);
+}
+
 //--------------------- PROCESS CONTROL BLOCK ---------------------
 PROCESS(flooding_process, "Lesson 5: Flooding");
 AUTOSTART_PROCESSES(&flooding_process);
@@ -110,7 +124,7 @@ PROCESS_THREAD(flooding_process, ev, data) {
 	static struct etimer et;
 
 	// Configure your team's channel (11 - 26).
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,14);
 
 	print_settings();
 	check_for_invalid_addr();
