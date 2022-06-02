@@ -32,14 +32,13 @@
 #include "contiki.h"
 #include "net/rime/rime.h"	// Establish connections.
 #include "lib/random.h"
+#include "dev/button-sensor.h"
 #include "dev/leds.h"
 #include "dev/cc2538-rf.h"
 
 // Standard C includes:
 #include <stdio.h>
 #include <stdint.h>
-
-
 
 
 /*** CONNECTION DEFINITION***/
@@ -73,10 +72,12 @@ static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
 /*** CONNECTION DEFINITION END ***/
 
 
+int tx_power = -7;
+
 /*** MAIN PROCESS DEFINITION ***/
 PROCESS(transmission_power_process, "Lesson 2: Transmission Power");
-AUTOSTART_PROCESSES(&transmission_power_process);
-
+PROCESS(button_power_change, "Power Changed by button");
+AUTOSTART_PROCESSES(&transmission_power_process, &button_power_change);
 
 /*** MAIN THREAD ***/
 PROCESS_THREAD(transmission_power_process, ev, data) {
@@ -89,12 +90,11 @@ PROCESS_THREAD(transmission_power_process, ev, data) {
 	/*
 	 * set your group's channel
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 26);
-
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
 	/*
 	 * Change the transmission power here
 	 */
-
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, tx_power); // 5,3,1,-1 ... int value form table
 	/*
 	 * open broadcast connection
 	 */
@@ -121,7 +121,7 @@ PROCESS_THREAD(transmission_power_process, ev, data) {
 		/*
 		 * for debugging
 		 */
-		printf("Broadcast message sent with power: %d\r\n",3); // or the configured Power
+		printf("Broadcast message sent with power: %d\r\n",tx_power); // or the configured Power
 
 		/*
 		 * reset the timer
@@ -131,6 +131,32 @@ PROCESS_THREAD(transmission_power_process, ev, data) {
 		leds_off(LEDS_RED);
 	}
 
+	PROCESS_END();
+}
+
+
+/*** Use button to change the tx power ***/
+PROCESS_THREAD(button_power_change, ev, data){
+	PROCESS_BEGIN();
+	while(1){
+		PROCESS_WAIT_EVENT();
+		if(ev == sensors_event) {
+		    if(data == &button_sensor) {
+		        if(button_sensor.value(BUTTON_SENSOR_VALUE_TYPE_LEVEL) ==
+		                BUTTON_SENSOR_PRESSED_LEVEL) {
+		            leds_on(LEDS_GREEN);
+		            }
+		        else if(button_sensor.value(BUTTON_SENSOR_VALUE_TYPE_LEVEL) ==
+		        		    BUTTON_SENSOR_RELEASED_LEVEL) {
+		        	leds_off(LEDS_GREEN);
+		            tx_power = tx_power + 1;
+		            if(tx_power > 7){
+		            	tx_power = -7;
+		            }
+		        }
+		    }
+		}
+	}
 	PROCESS_END();
 }
 
