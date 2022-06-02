@@ -88,7 +88,7 @@ PROCESS_THREAD(simple_packet_process, ev, data) {
 	/*
 	 * set your group's channel
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
 
 	/*
 	 * OPen broadcast connection

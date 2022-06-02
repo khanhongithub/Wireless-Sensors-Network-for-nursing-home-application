@@ -56,6 +56,7 @@ typedef struct{
 
 //Global variables
 static contact tx_contacts;
+const struct contact *contacts_adr = &tx_contacts;
 
 // Definition of Processes
 PROCESS(custom_payload_process, "Lesson 2: Custom Payload");
@@ -79,9 +80,14 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 			packetbuf_attr(PACKETBUF_ATTR_RSSI));
 
 	//Copy the payload of the packetbuffer to a given memory location
-	/*** YOUR CODE HERE ***/
+	static contact rx_contacts;
+	struct contact *rx_adr = &rx_contacts;
+	packetbuf_copyto(rx_adr);
 	//print the content of the memory location
-	/*** YOUR CODE HERE ***/
+
+		printf("%s \n\r",rx_contacts.name);
+		printf("%s \n\r",rx_contacts.surname);
+		printf("%s \n\r",rx_contacts.tel);
 
 	leds_off(LEDS_GREEN);
 }
@@ -108,12 +114,12 @@ PROCESS_THREAD(custom_payload_process, ev, data)
 	/*
 	 * set your group's channel
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
 
 	/*
 	 * Change the transmission power
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER,3);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER,5);
 
 
 	// Open broadcast connection.
@@ -135,6 +141,7 @@ PROCESS_THREAD(custom_payload_process, ev, data)
 		//Copy the content of tx_contacts to the buffer.
 		//Hint: use packetbuf_copyfrom()
 		/*** YOUR CODE HERE ***/
+		packetbuf_copyfrom(contacts_adr,80);
 
 		broadcast_send(&broadcast);
 		leds_off(LEDS_RED);

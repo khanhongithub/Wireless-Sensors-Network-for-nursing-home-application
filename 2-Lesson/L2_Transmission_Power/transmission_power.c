@@ -71,8 +71,8 @@ static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
 
 /*** CONNECTION DEFINITION END ***/
 
-
-int tx_power = -7;
+int power_index[14]= {-24, -15, -13, -11, -9, -7, -5, -3, -1, 0, 1, 3, 5, 7};
+int tx_index = 0;
 
 /*** MAIN PROCESS DEFINITION ***/
 PROCESS(transmission_power_process, "Lesson 2: Transmission Power");
@@ -94,7 +94,9 @@ PROCESS_THREAD(transmission_power_process, ev, data) {
 	/*
 	 * Change the transmission power here
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, tx_power); // 5,3,1,-1 ... int value form table
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, power_index[0]); // 5,3,1,-1 ... int value form table
+	radio_value_t a = 0;
+
 	/*
 	 * open broadcast connection
 	 */
@@ -116,12 +118,16 @@ PROCESS_THREAD(transmission_power_process, ev, data) {
 		/*
 		 * send the message
 		 */
+		NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, power_index[tx_index]); // 5,3,1,-1 ... int value form table
 		broadcast_send(&broadcastConn);
 
 		/*
 		 * for debugging
 		 */
-		printf("Broadcast message sent with power: %d\r\n",tx_power); // or the configured Power
+
+		NETSTACK_CONF_RADIO.get_value(RADIO_PARAM_TXPOWER, &a);
+		printf("real power %d\n\r", a);
+		printf("Broadcast message sent with power: %d\r\n",power_index[tx_index]); // or the configured Power
 
 		/*
 		 * reset the timer
@@ -149,9 +155,9 @@ PROCESS_THREAD(button_power_change, ev, data){
 		        else if(button_sensor.value(BUTTON_SENSOR_VALUE_TYPE_LEVEL) ==
 		        		    BUTTON_SENSOR_RELEASED_LEVEL) {
 		        	leds_off(LEDS_GREEN);
-		            tx_power = tx_power + 1;
-		            if(tx_power > 7){
-		            	tx_power = -7;
+		        	tx_index = tx_index + 1;
+		            if(tx_index > 13){
+		            	tx_index = 0;
 		            }
 		        }
 		    }
