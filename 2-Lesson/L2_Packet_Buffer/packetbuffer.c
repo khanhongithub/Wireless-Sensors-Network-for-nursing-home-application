@@ -103,7 +103,7 @@ PROCESS_THREAD(packet_buffer_process, ev, data)
 	/*
 	 * set your group's channel
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
 
 	/*
 	 * Change the transmission power
@@ -139,8 +139,6 @@ PROCESS_THREAD(packet_buffer_process, ev, data)
 		 */
 		printf("Broadcast message sent in channel %d with power: %d\r\n", 26, 3);
 
-		print_packetbuffer();
-
 		/*
 		 * reset the timer
 		 */
@@ -157,14 +155,15 @@ PROCESS_THREAD(packet_buffer_process, ev, data)
 
 static void copy_and_print_packetbuffer(){
 	//copy the payload of the packetbuffer to a given memory location
-	/*** YOUR CODE HERE ***/
+	char mem[100] = {};
+	(char *)packetbuf_copyto(mem);
 	//print the content of the memory location
-	/*** YOUR CODE HERE ***/
+	printf("%s \n\r", mem);
 }
 
 static void print_packetbuffer(){
 	//retrieve the pointer to the payload and the length of it
-	/*** YOUR CODE HERE ***/
+	char* packetadr = packetbuf_dataptr();
 	//use the retrieved information to print the content of the payload
-	/*** YOUR CODE HERE ***/
+	printf("%s \n\r",packetadr);
 }
