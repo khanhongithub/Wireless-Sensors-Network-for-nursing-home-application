@@ -41,6 +41,7 @@
 
 // Reading frequency in seconds.
 #define TEMP_READ_INTERVAL CLOCK_SECOND*1
+#define MAX_N 80
 
 
 /*** CONNECTION DEFINITION***/
@@ -61,6 +62,7 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
 	leds_off(LEDS_GREEN);
 }
 
+
 /**
  * Connection information
  */
@@ -70,6 +72,20 @@ static struct broadcast_conn broadcastConn;
  * Assign callback functions to the connection
  */
 static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
+
+
+typedef struct{
+	char content[MAX_N];
+}sensor;
+
+static sensor temp_sensor;
+
+char battery[MAX_N/2] = "\r\nBattery: ";
+char temperature[MAX_N/2] = "\r\nTemperature: ";
+char bat_val[5];
+char tem_val[5];
+char voltage_unit[10] = " mV";
+char temp_unit[10] = " mC";
 
 /*** CONNECTION DEFINITION END ***/
 
@@ -110,8 +126,27 @@ PROCESS_THREAD (on_board_sensors_process, ev, data) {
 	    if(ev == PROCESS_EVENT_TIMER) {
 
 	    	leds_on(LEDS_PURPLE);
-    		printf("\r\nMy Battery Voltage [VDD] = %d mV", vdd3_sensor.value(CC2538_SENSORS_VALUE_TYPE_CONVERTED));
-    		printf("\r\nThe Temperature [C] = %d mC", cc2538_temp_sensor.value(CC2538_SENSORS_VALUE_TYPE_CONVERTED));
+
+	    	// generate the packet content
+	    	strcpy(battery, "\r\nBattery: ");
+	    	strcpy(temperature, "\r\nTemperature: ");
+
+    		snprintf(bat_val, sizeof(bat_val), "%d", vdd3_sensor.value(CC2538_SENSORS_VALUE_TYPE_CONVERTED));
+    		strcat(battery, bat_val);
+    		strcat(battery, voltage_unit);
+    		printf(battery);
+
+    		snprintf(tem_val, sizeof(tem_val), "%d", cc2538_temp_sensor.value(CC2538_SENSORS_VALUE_TYPE_CONVERTED));
+    		strcat(temperature, tem_val);
+    		strcat(temperature, temp_unit);
+    		printf(temperature);
+
+    		strcpy(temp_sensor.content, battery);
+    		strcat(temp_sensor.content, temperature);
+
+    		// send the packet
+    		packetbuf_copyfrom(&temp_sensor, 100);
+    		broadcast_send(&broadcastConn);
     		leds_off(LEDS_PURPLE);
 
     		etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
