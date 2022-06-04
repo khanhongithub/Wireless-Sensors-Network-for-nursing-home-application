@@ -42,6 +42,7 @@
 
 // Reading frequency in seconds.
 #define TEMP_READ_INTERVAL CLOCK_SECOND*1
+#define JOYSTICK_READ_INTERVAL CLOCK_SECOND*0.1
 
 /*** CONNECTION DEFINITION***/
 
@@ -61,6 +62,24 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
 	leds_off(LEDS_GREEN);
 }
 
+
+//function for outputting the lux value read from sensor
+    		//@param m: calibration value m inscribed on the back of the sensor
+    		//@param b: calibration value b inscribed on the back of the sensor
+    		//@param adc_input: phidget input value. Use ZOUL_SENSORS_ADC1 or ZOUL_SENSORS_ADC3 depending on where the sensor is connected to.
+    		//@return int : lux value with a max of 1000.
+static int getLightSensorValue(float m, float b, uint16_t adc_input){
+    		//Convert the voltage in lux with the provided formula
+    		int luminosity = m*(adc_input/4.096)+b;
+    		//Return the value of the light with maximum value equal to 1000
+    		if (luminosity<1)
+			return 1;
+    		else if (luminosity>1000)
+    			return 1000;
+    		else
+    			return luminosity;
+}
+
 /**
  * Connection information
  */
@@ -75,9 +94,73 @@ static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
 
 //--------------------- PROCESS CONTROL BLOCK ---------------------
 PROCESS (ext_sensors_process, "External Sensors process");
-AUTOSTART_PROCESSES (&ext_sensors_process);
+PROCESS (ext_joystick_process, "External Joystick Sensors process");
+AUTOSTART_PROCESSES (&ext_sensors_process,&ext_joystick_process);
+
 
 //------------------------ PROCESS' THREAD ------------------------
+
+PROCESS_THREAD(ext_joystick_process, ev, data) {
+	static struct etimer joystick_reading_timer;
+	static uint16_t x_value, y_value;
+
+	PROCESS_BEGIN ();
+
+	printf("\r\nZolertia RE-Mote external Joystick sensors");
+		printf("\r\n====================================");
+
+		/*
+		 * set your group's channel
+		 */
+		NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,14);
+
+		/*
+		 * open the connection
+		 */
+		broadcast_open(&broadcastConn,129,&broadcast_callbacks);
+
+
+		/* Configure the ADC ports */
+		adc_zoul.configure(SENSORS_HW_INIT, ZOUL_SENSORS_ADC1 | ZOUL_SENSORS_ADC3);
+
+
+		etimer_set(&joystick_reading_timer, JOYSTICK_READ_INTERVAL);
+		while (1) {
+
+				PROCESS_WAIT_EVENT();  // let process continue
+
+				/* If timer expired, pront sensor readings */
+			    if(ev == PROCESS_EVENT_TIMER) {
+
+			    	leds_on(LEDS_RED);
+
+			    	/*
+			    	 * Read ADC values. Data is in the 12 MSBs
+			    	 */
+			    	x_value = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
+			    	y_value = adc_zoul.value(ZOUL_SENSORS_ADC3) >> 4;
+
+			    	/*
+			    	 * Print Raw values
+			    	 */
+
+			    	printf("\r\nADC1 value [Raw] = %d", x_value);
+			        printf("\r\nADC3 value [Raw] = %d", y_value);
+
+
+		    		leds_off(LEDS_RED);
+
+		    		etimer_set(&joystick_reading_timer, JOYSTICK_READ_INTERVAL);
+			    }
+		    }
+		PROCESS_END ();
+
+}
+
+
+
+
+
 PROCESS_THREAD (ext_sensors_process, ev, data) {
 
 	/* variables to be used */
@@ -93,7 +176,7 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	/*
 	 * set your group's channel
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,14);
 
 	/*
 	 * open the connection
@@ -131,6 +214,9 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 
 
     		leds_off(LEDS_PURPLE);
+
+    		int luminosity = getLightSensorValue(1.3691, 39.716, adc1_value);
+    		printf("\r\nADC1 value [Reverted] = %d\n", luminosity);
 
     		etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
 	    }
