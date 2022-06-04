@@ -54,7 +54,9 @@ typedef struct
 {
 	linkaddr_t 	dest[TOTAL_NODES];			// Destination id. Every node should be able to reach every other node plus itself. Thus total entries are equal to total number of nodes.
 	linkaddr_t 	next_hop[TOTAL_NODES];		// Next hop in route to destination.
+	linkaddr_t  next_hop_r;                 // Red message hop
 	uint8_t 	cost[TOTAL_NODES]; 			// Number of total hops of the packet route. Maximum 10.
+	uint8_t     cost_r;
 }l_table;
 
 typedef struct{

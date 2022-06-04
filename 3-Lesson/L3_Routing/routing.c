@@ -74,6 +74,7 @@ static l_table lut[TOTAL_NODES] = {
 		.dest[1].u8[1] = 0x02, .next_hop[1].u8[1] = 0x02, .cost[1] = 1,
 		// Third entry
 		.dest[2].u8[1] = 0x03, .next_hop[2].u8[1] = 0x02, .cost[2] = 2,
+		.next_hop_r.u8[1] = 0x01, .cost_r = 0,
 		/*
 		 * Add here more entries if using more than three nodes.
 		 */
@@ -86,6 +87,7 @@ static l_table lut[TOTAL_NODES] = {
 		.dest[0].u8[1] = 0x01, .next_hop[0].u8[1] = 0x03, .cost[0] = 2,
 		.dest[1].u8[1] = 0x02, .next_hop[1].u8[1] = 0x02, .cost[1] = 0,
 		.dest[2].u8[1] = 0x03, .next_hop[2].u8[1] = 0x03, .cost[2] = 1,
+		.next_hop_r.u8[1] = 0x01, .cost_r = 1,
 	},
 
 	/*
@@ -95,8 +97,8 @@ static l_table lut[TOTAL_NODES] = {
 		.dest[0].u8[1] = 0x01, .next_hop[0].u8[1] = 0x01, .cost[0] = 1,
 		.dest[1].u8[1] = 0x02, .next_hop[1].u8[1] = 0x01, .cost[1] = 2,
 		.dest[2].u8[1] = 0x03, .next_hop[2].u8[1] = 0x03, .cost[2] = 0,
-	}
-	,
+		.next_hop_r.u8[1] = 0x02, .cost_r = 2,
+	},
 	/*
 	 * Add here more lookup table entries if using more than three nodes.
 	 */
@@ -113,17 +115,24 @@ AUTOSTART_PROCESSES(&routing_process, &send_process,
 //------------------------ FUNCTIONS ------------------------
 
 static void send_packet(packet_t tx_packet){
-	uint8_t i;
-	// Define next hop and forward packet
-	for(i = 0; i < TOTAL_NODES; i++)
-	{
-		if(linkaddr_cmp(&tx_packet.dest, &lut[node_id - 1].dest[i]))
+	if(tx_packet.message == LEDS_RED){
+		packetbuf_copyfrom(&tx_packet, sizeof(packet_t));
+		unicast_send(&unicast, &lut[node_id - 1].next_hop_r);
+	}
+	else{
+		uint8_t i;
+		// Define next hop and forward packet
+		for(i = 0; i < TOTAL_NODES; i++)
 		{
-			packetbuf_copyfrom(&tx_packet, sizeof(packet_t));
-			unicast_send(&unicast, &lut[node_id - 1].next_hop[i]);
-			break;
+			if(linkaddr_cmp(&tx_packet.dest, &lut[node_id - 1].dest[i]))
+			{
+				packetbuf_copyfrom(&tx_packet, sizeof(packet_t));
+				unicast_send(&unicast, &lut[node_id - 1].next_hop[i]);
+				break;
+			}
 		}
 	}
+
 	turn_off(tx_packet.message);
 }
 
@@ -170,6 +179,7 @@ unicast_recv(struct unicast_conn *c, const linkaddr_t *from) {
 		process_post(&destination_reaced_process, PROCESS_EVENT_MSG,
 				&rx_packet.message);
 		// Your Code here
+		process_post(&routing_process, PROCESS_EVENT_MSG, 0);
 		return;
 	}
 	else
@@ -192,6 +202,7 @@ static const struct unicast_callbacks unicast_call = {unicast_recv};
 PROCESS_THREAD(routing_process, ev, data) {
 
 	PROCESS_EXITHANDLER(unicast_close(&unicast);)
+	static struct etimer et;
 	PROCESS_BEGIN();
 
 	packet_t tx_packet;
@@ -223,16 +234,38 @@ PROCESS_THREAD(routing_process, ev, data) {
 						BUTTON_SENSOR_PRESSED_LEVEL ) {
 
 					// generate packet
-					int dest_id = calculate_destination(node_id, TOTAL_NODES);
-					tx_packet.dest.u8[0] = (dest_id >> 8) & 0xFF;
-					tx_packet.dest.u8[1] = dest_id & 0xFF;
 					tx_packet.message = led_color;
+					int dest_id = calculate_destination(node_id, TOTAL_NODES);
+					if(tx_packet.message == LEDS_RED){
+						tx_packet.dest.u8[1] = 0x01;
+					}
+					else{
+						tx_packet.dest.u8[0] = (dest_id >> 8) & 0xFF;
+						tx_packet.dest.u8[1] = dest_id & 0xFF;
+					}
 
 					turn_on(led_color);
 
 					enqueue_packet(tx_packet);
 				}
 			}
+		}
+		else if(ev == PROCESS_EVENT_MSG){
+			etimer_set(&et, CLOCK_SECOND);
+			PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+			tx_packet.message = led_color;
+			int dest_id = calculate_destination(node_id, TOTAL_NODES);
+			if(tx_packet.message == LEDS_RED){
+				tx_packet.dest.u8[1] = 0x01;
+			}
+			else{
+				tx_packet.dest.u8[0] = (dest_id >> 8) & 0xFF;
+				tx_packet.dest.u8[1] = dest_id & 0xFF;
+			}
+
+			turn_on(led_color);
+
+			enqueue_packet(tx_packet);
 		}
 	}
 
