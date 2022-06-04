@@ -87,10 +87,9 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 
 		printf("%s \n\r",rx_contacts.name);
 		printf("%s \n\r",rx_contacts.surname);
-		 for(int i=0;i<=MAX_N;i++){
-		        	printf("%d",rx_contacts.tel[i]);
-		        }
-
+        for(int i=0;i<=MAX_N;i++){
+        	printf("%d",rx_contacts.tel[i]);
+        }
 	leds_off(LEDS_GREEN);
 }
 
@@ -121,7 +120,7 @@ PROCESS_THREAD(custom_payload_process, ev, data)
 	/*
 	 * Change the transmission power
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER,5);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER,3);
 
 
 	// Open broadcast connection.
@@ -133,7 +132,7 @@ PROCESS_THREAD(custom_payload_process, ev, data)
 	{
 		// Transmitted values
 		strcpy(tx_contacts.name,"Contiki");
-		strcpy(tx_contacts.surname,"WSN");
+		strcpy(tx_contacts.surname,"DING");
 		for(i=0;i<10;i++){
 			tx_contacts.tel[i]=i;
 		}
