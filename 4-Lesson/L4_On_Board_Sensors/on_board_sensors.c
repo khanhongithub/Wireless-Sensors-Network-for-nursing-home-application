@@ -93,7 +93,7 @@ PROCESS_THREAD (on_board_sensors_process, ev, data) {
 	/*
 	 * set your group's channel
 	 */
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,14);
 
 	/*
 	 * open the connection
@@ -106,11 +106,12 @@ PROCESS_THREAD (on_board_sensors_process, ev, data) {
 
 		PROCESS_WAIT_EVENT();  // let process continue
 
-		/* If timer expired, pront sensor readings */
+		/* If timer expired, print sensor readings */
 	    if(ev == PROCESS_EVENT_TIMER) {
 
 	    	leds_on(LEDS_PURPLE);
     		printf("\r\nMy Battery Voltage [VDD] = %d mV", vdd3_sensor.value(CC2538_SENSORS_VALUE_TYPE_CONVERTED));
+    		printf("\r\nThe Temperature [C] = %d mC", cc2538_temp_sensor.value(CC2538_SENSORS_VALUE_TYPE_CONVERTED));
     		leds_off(LEDS_PURPLE);
 
     		etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
