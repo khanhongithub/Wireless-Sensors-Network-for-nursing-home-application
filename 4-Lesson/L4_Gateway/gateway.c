@@ -41,8 +41,7 @@
 //---------------- FUNCTION PROTOTYPES ----------------
 
 // Broadcast connection setup:
-static void
-broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
+static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
 static struct broadcast_conn broadcastConn;
 static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
 
@@ -66,7 +65,7 @@ PROCESS_THREAD(gateway_main_process, ev, data) {
 	/*
 	* set your group's channel
 	*/
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
 
 	print_settings();
 
