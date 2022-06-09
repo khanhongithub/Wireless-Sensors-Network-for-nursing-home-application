@@ -42,7 +42,7 @@
 
 // Reading frequency in seconds.
 #define TEMP_READ_INTERVAL CLOCK_SECOND*1
-#define JOYSTICK_READ_INTERVAL CLOCK_SECOND*0.1
+#define JOYSTICK_READ_INTERVAL CLOCK_SECOND*0.5
 
 /*** CONNECTION DEFINITION***/
 
@@ -144,9 +144,33 @@ PROCESS_THREAD(ext_joystick_process, ev, data) {
 			    	 * Print Raw values
 			    	 */
 
-			    	printf("\r\nADC1 value [Raw] = %d", x_value);
-			        printf("\r\nADC3 value [Raw] = %d", y_value);
+			    	//printf("\r\nx_value [Raw] = %d", x_value);
+			        //printf("\r\ny_value [Raw] = %d", y_value);
 
+			        if ((x_value>=1532)&&(x_value<=1580)&&(y_value>=800)&&(y_value<=840))
+			        {
+			        	printf("\r\nCenter");
+			        }
+			        else if (x_value<100)
+			        {
+			        	printf("\r\nLeft");
+			        }
+			        else if (x_value>2040)
+			        {
+			        	printf("\r\nRight");
+			        }
+			        else if (y_value>1600)
+			        {
+			        	printf("\r\nUp");
+			        }
+			        else if (y_value<20)
+			        {
+			       		printf("\r\nDown");
+			       	}
+			        else
+			        {
+			        	printf("\r\nUnknown");
+			        }
 
 		    		leds_off(LEDS_RED);
 
@@ -202,15 +226,15 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	    	/*
 	    	 * Read ADC values. Data is in the 12 MSBs
 	    	 */
-	    	adc1_value = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
-	    	adc3_value = adc_zoul.value(ZOUL_SENSORS_ADC3) >> 4;
+	    	//adc1_value = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
+	    	//adc3_value = adc_zoul.value(ZOUL_SENSORS_ADC3) >> 4;
 
 	    	/*
 	    	 * Print Raw values
 	    	 */
 
-	    	printf("\r\nADC1 value [Raw] = %d", adc1_value);
-	        printf("\r\nADC3 value [Raw] = %d", adc3_value);
+	    	//printf("\r\nADC1 value [Raw] = %d", adc1_value);
+	        //printf("\r\nADC3 value [Raw] = %d", adc3_value);
 
 
     		leds_off(LEDS_PURPLE);

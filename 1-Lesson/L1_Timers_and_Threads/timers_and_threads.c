@@ -65,6 +65,7 @@ PROCESS_THREAD(timers_and_threads_process, ev, data) {
 			/* Reset Timer */
 		etimer_reset(&freq_timer);
 		if (timer_expired(&stop_timer)){
+			leds_off(LEDS_RED);
 			PROCESS_EXIT();
 		}
     }
