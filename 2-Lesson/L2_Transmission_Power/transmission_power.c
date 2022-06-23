@@ -95,7 +95,7 @@ PROCESS_THREAD(transmission_power_process, ev, data) {
 	 * Change the transmission power here
 	 */
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, power_index[0]); // 5,3,1,-1 ... int value form table
-	radio_value_t a = 0;
+	// radio_value_t a = 0;
 
 	/*
 	 * open broadcast connection
@@ -125,8 +125,9 @@ PROCESS_THREAD(transmission_power_process, ev, data) {
 		 * for debugging
 		 */
 
-		NETSTACK_CONF_RADIO.get_value(RADIO_PARAM_TXPOWER, &a);
-		printf("real power %d\n\r", a);
+		// NETSTACK_CONF_RADIO.get_value(RADIO_PARAM_TXPOWER, &a);
+		// printf("real power %d\n\r", a);
+
 		printf("Broadcast message sent with power: %d\r\n",power_index[tx_index]); // or the configured Power
 
 		/*
