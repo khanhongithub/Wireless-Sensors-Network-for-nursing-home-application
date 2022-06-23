@@ -117,7 +117,7 @@ void MainWindow::receive()
                 ui->textEdit_Status->append(str);
 
 
-                if (str.contains("Temperature:"))
+                if (str.contains("Battery:"))
                 {
 
                     double value;
@@ -128,7 +128,7 @@ void MainWindow::receive()
                         qDebug() << "List size " << list.size();
                         for (int i=0; i < list.size(); i++){
                             qDebug() << "List value "<< i <<" "<< list.at(i);
-                            if (list.at(i) == "Temperature:") {
+                            if (list.at(i) == "Battery:") {
                                 value = list.at(i+1).toDouble();
                                 //adjust to Degrees
                                 value = value / 1000;
