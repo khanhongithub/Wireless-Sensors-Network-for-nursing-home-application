@@ -4,6 +4,8 @@
 #include "lib/random.h"
 #include "dev/leds.h"
 
+#include <stdio.h>
+
 
 static uint8_t node_id = 1;
 
@@ -47,7 +49,7 @@ static const struct broadcast_callbacks syncing_call = {syncing_recv};
 
 PROCESS_THREAD(sync_broadcasting, ev, data) {
 
-	static uint8_t broadcast_time_interval = 3;
+	static uint8_t broadcast_time_interval = 1.5;
 	static struct etimer sync_timer;
 
 	PROCESS_EXITHANDLER(broadcast_close(&broadcast));
@@ -76,7 +78,26 @@ PROCESS_THREAD(sync_broadcasting, ev, data) {
         packetbuf_copyfrom(&tx_contacts ,100);
         broadcast_send(&broadcast);
 
-        printf("%d \n\r", tx_contacts);
+        for (int i=0; i<6; i++){
+        	printf("%d ", tx_contacts.node_list[i]);
+        }
+        printf(" \n\r");
+        for (int i=0; i<6; i++){
+            printf("%d ", tx_contacts.node_in[i]);
+        }
+        printf(" \n\r");
+        for (int i=0; i<6; i++){
+            printf("%d ", tx_contacts.node_leave[i]);
+        }
+        printf(" \n\r");
+        for (int i=0; i<6; i++){
+            printf("%d ", tx_contacts.event_static[i]);
+        }
+        printf(" \n\r");
+        for (int i=0; i<6; i++){
+            printf("%d ", tx_contacts.value[i]);
+        }
+        printf(" \n\r");
 
         printf("Sync message sent in channel %d with power: %d\r\n", 14, 3);
         etimer_reset(&sync_timer);

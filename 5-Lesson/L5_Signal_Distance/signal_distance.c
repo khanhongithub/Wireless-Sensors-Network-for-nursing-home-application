@@ -99,7 +99,7 @@ PROCESS_THREAD(txRadio_process, ev, data) {
 	static struct etimer et;
 
 	// Configure your team's channel.
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,26);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL,14);
 
 	print_settings();
 
