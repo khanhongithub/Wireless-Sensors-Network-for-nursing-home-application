@@ -11,13 +11,14 @@
 // Other C files
 #include "cluster_member.h"
 #include "cluster_head.h"
-#include "helpers.h"
 
 // Define parameters of the network
 #define BROADCAST_RIME_CHANNEL 129
 #define UNICAST_RIME_CHANNEL 146
-#define BROADCAST_INTERVAL 2
+#define UNICAST_GATEWAY_CHANNEL 149
+#define BROADCAST_INTERVAL 4
 #define DELAY_INTERVAL 0.5
+#define GATEWAY_INTERVAL 3.5
 #define CHANNEL 14
 #define POWER 3
 #define MAX_N 20
@@ -25,7 +26,11 @@
 
 // global variable
 static uint8_t node_id;		        // Stores node id
-static uint8_t head_id = 1;             // Stores head id
+static uint8_t head_id = 255;             // Stores head id
+static uint8_t gateway_id = 7;
+
+int to_report = 0;
+int report_end_sync = 0;
 
 int is_cluster_head(){
 	return node_id == head_id;
@@ -46,14 +51,14 @@ static syncing tx_contacts;
 typedef struct{
 	uint8_t nodeid;
 	char type[MAX_N];
-	char content[MAX_N];
 	uint8_t value;
 }data_report;
 
 static data_report tx_reports;
 
+static report_gateway tx_gateway_report;
 
-// Creates an instance of a broadcast connection.
+// Creates broadcast and unicast connection.
 static struct unicast_conn unicast;
 static struct broadcast_conn broadcast;
 
@@ -61,12 +66,21 @@ static struct broadcast_conn broadcast;
 PROCESS(sync_broadcasting, "Sync frame broadcasting of the sensor code.");
 PROCESS(uni_reporting, "Used by CM, report to CH.");
 PROCESS(head_change, "Run when the duty time of current CH finished.");
-PROCESS(node_initial, "Used for node initialisation");
+PROCESS(node_initial, "Node self-organising the network");
+PROCESS(start_node_initial, "Used to start ");
+PROCESS(failure_countdown, "used by cm to count a ch failure");
+PROCESS(report_to_gateway, "used by ch to report to gateway.");
 
-AUTOSTART_PROCESSES(&sync_broadcasting, &uni_reporting, &head_change, &node_initial);
+AUTOSTART_PROCESSES(&sync_broadcasting,
+		            &uni_reporting,
+					&head_change,
+					&node_initial,
+					&start_node_initial,
+					&failure_countdown,
+					&report_to_gateway);
 
 
-// Defines the behavior of a cluster member received syncing frame.
+// Defines the behavior of a cluster head received reporting frame.
 static void reporting_recv(struct unicast_conn *c, const linkaddr_t *from){
 
 	leds_on(LEDS_BLUE);
@@ -78,20 +92,18 @@ static void reporting_recv(struct unicast_conn *c, const linkaddr_t *from){
 	printf("Got RX packet (unicast) from: 0x%x%x, len: %d, RSSI: %d\r\n",
 			from->u8[0], from->u8[1],len,rssi);
 
-	static data_report rx_contacts;
-	packetbuf_copyto(&rx_contacts);
+	static data_report rx_uni_report;
+	packetbuf_copyto(&rx_uni_report);
 
-	printf("Node Id: %d \n\r",rx_contacts.nodeid);
-	printf("Event Type: %s \n\r",rx_contacts.type);
-	printf("Read Value: %d \n\r",rx_contacts.value);
+	printf("Node Id: %d     ", rx_uni_report.nodeid);
+	printf("Event Type: %s     ", rx_uni_report.type);
+	printf("Read Value: %d \n\r", rx_uni_report.value);
 
+    Topology_Record(rx_uni_report.nodeid);
 
+    Status_Record(rx_uni_report.nodeid, rx_uni_report.value);
 
-	// wait to think how to implement.
-	// depends on the type of unicast, report or collect,
-	// do report to gateway or data aggregation and then send to gateway
-
-
+    report_end_sync = 1;
 
 	leds_off(LEDS_BLUE);
 }
@@ -111,29 +123,33 @@ static void syncing_recv(struct broadcast_conn *c, const linkaddr_t *from)
 			from->u8[0], from->u8[1],len,rssi);
     leds_off(LEDS_GREEN);
 
-	if(from_cluster_head(from->u8[1])){
-		static syncing rx_contacts;
-		packetbuf_copyto(&rx_contacts);
+    if(Node_Is_Free()){
+    	head_id = from->u8[1];
+    	printf("received other syncing frame, join the cluster.\n\r");
+    	process_post(&failure_countdown, PROCESS_EVENT_MSG, 0);
+    	Set_Free(0);
+    }
 
-		printf("%s \n\r",rx_contacts.type);
+	if(from_cluster_head(from->u8[1])){
+		static syncing rx_sync;
+		packetbuf_copyto(&rx_sync);
+
+		printf("%s \n\r",rx_sync.type);
 		// detect content
-		if(strcmp(rx_contacts.type, "Syncing") == 0){
-			int value = Random_Input();
-			if(Event_Generator(value)){
-				printf("Need report with value: ");
-				tx_reports.nodeid = node_id;
-			    tx_reports.value = value;
-		    	printf("%d \n\r", tx_reports.value);
-				process_post(&uni_reporting, PROCESS_EVENT_MSG, 0);
-			}
-			else{
-				printf("no report.\n\r");
-			}
+		if(strcmp(rx_sync.type, "Sync_Event") == 0){
+			process_post(&failure_countdown, PROCESS_EVENT_MSG, 0);
+			process_post(&uni_reporting, PROCESS_EVENT_MSG, 0);
 		}
-		else if(strcmp(rx_contacts.type, "Switching") == 0){
-			printf("next, %d\n\r", rx_contacts.nodeid);
-			head_id = rx_contacts.nodeid;
-			if(rx_contacts.nodeid == node_id){
+		else if(strcmp(rx_sync.type, "Sync_Report") == 0){
+			to_report = 1;
+			process_post(&failure_countdown, PROCESS_EVENT_MSG, 0);
+		    process_post(&uni_reporting, PROCESS_EVENT_MSG, 0);
+		}
+		else if(strcmp(rx_sync.type, "Switching") == 0){
+			process_post(&failure_countdown, PROCESS_EVENT_MSG, 0);
+			printf("next, %d\n\r", rx_sync.nodeid);
+			head_id = rx_sync.nodeid;
+			if(rx_sync.nodeid == node_id){
 				printf("i am next!\n\r");
 				Reset_Duty(0);
 				process_post(&sync_broadcasting, PROCESS_EVENT_MSG, 0);
@@ -148,16 +164,7 @@ static void syncing_recv(struct broadcast_conn *c, const linkaddr_t *from)
 // Defines the functions used as callbacks for a broadcast connection.
 static const struct broadcast_callbacks syncing_call = {syncing_recv};
 
-// defines the behavior of cluster member received ch change message
-/*
-static void c_change_recv(struct broadcast_conn *c, const linkaddr_t *from){
-	;
-}
-
-static const struct broadcast_callbacks c_change_call = {c_change_recv};
-*/
-
-
+// cm use this process to report to ch
 PROCESS_THREAD(uni_reporting, ev, data) {
 
 	node_id = (linkaddr_node_addr.u8[1] & 0xFF);
@@ -167,8 +174,8 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 
 	static struct etimer delay;
 
+
 	PROCESS_BEGIN();
-	// Configure your team's channel (11 - 26).
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, 3);
 
@@ -178,10 +185,29 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 		PROCESS_WAIT_EVENT();
 		linkaddr_t addr;
 		if(ev == PROCESS_EVENT_MSG){
-		    strcpy(tx_reports.type, "EVENT");
-		    printf("Packet from %d ", node_id);
-		    etimer_set(&delay, report_delay_interval * CLOCK_SECOND * node_id);
-		    leds_on(LEDS_RED);
+			int send = 0;
+			int status = Random_Input();
+			if(to_report){
+				printf("[PROCESS_uni_reporting] Data collect. \n\r");
+				strcpy(tx_reports.type, "REPORT");
+				send = 1;
+				to_report = 0;
+			}
+			else if (status != 0){
+				printf("[PROCESS_uni_reporting] Need report Event. \n\r");
+		      	strcpy(tx_reports.type, "EVENT");
+		        send = 1;
+			}
+			else {
+				printf("[PROCESS_uni_reporting] No report.\n\r");
+			}
+
+			if (send){
+				tx_reports.nodeid = node_id;
+				tx_reports.value = status;
+				etimer_set(&delay, report_delay_interval * CLOCK_SECOND * node_id);
+				leds_on(LEDS_RED);
+			}
 		}
 		else if (ev == PROCESS_EVENT_TIMER){
 			if (etimer_expired(&delay)){
@@ -190,7 +216,7 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 
 		        packetbuf_copyfrom(&tx_reports, 100);
 		        unicast_send(&unicast, &addr);
-		        printf("Send.\n\r");
+		        printf("[PROCESS_uni_reporting] Send.\n\r");
 		        leds_off(LEDS_RED);
 		    }
 		}
@@ -199,6 +225,40 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 	PROCESS_END();
 }
 
+// used by cm to count down the time of last received sync,
+// if it is too long, consider the ch is failed, return itself to free node and run initial process.
+PROCESS_THREAD(failure_countdown, ev, data){
+	static uint8_t ch_failue_count = BROADCAST_INTERVAL;
+
+	PROCESS_EXITHANDLER( printf("[PROCESS_failure_countdown] Start the node! \n\r");)
+	PROCESS_BEGIN();
+	static struct etimer failure_count;
+
+	while(1) {
+		PROCESS_WAIT_EVENT();
+		if(ev == PROCESS_EVENT_MSG){
+			etimer_set(&failure_count, 2 * ch_failue_count * CLOCK_SECOND);
+		}
+		else if (ev == PROCESS_EVENT_TIMER){
+			if (etimer_expired(&failure_count) && (Node_Is_Free() == 0)){
+				if (Node_Is_Free() || is_cluster_head()){
+					printf("[PROCESS_failure_countdown] Do nothing.\n\r");
+				}
+				else{
+					Set_Free(1);
+				    head_id = 255;
+				    printf("[PROCESS_failure_countdown] Failure Detected.\n\r");
+				    process_post(&node_initial, PROCESS_EVENT_MSG, 0);
+				}
+			}
+		}
+	}
+
+	PROCESS_END();
+}
+
+
+// used by ch to broadcast sync frame
 PROCESS_THREAD(sync_broadcasting, ev, data) {
 
 	static uint8_t broadcast_time_interval = BROADCAST_INTERVAL;
@@ -215,35 +275,105 @@ PROCESS_THREAD(sync_broadcasting, ev, data) {
 
     while(1) {
     	PROCESS_WAIT_EVENT();
-    	if (node_id == head_id && ev == PROCESS_EVENT_MSG){
-    		etimer_set(&sync_timer, broadcast_time_interval * CLOCK_SECOND);
+    	if (node_id == head_id && (ev == PROCESS_EVENT_MSG || ev == PROCESS_EVENT_TIMER)){
+    		if (Remain_Duty()) {
+    		    leds_on(LEDS_BLUE);
+    		    //fill the packet buffer
+    		    if (Need_Report()){
+    		        strcpy(tx_contacts.type, "Sync_Report");
+    		        report_end_sync = 1;
+    		        Reset_Topo();
+    		    }
+    		    else{
+    		    	strcpy(tx_contacts.type, "Sync_Event");
+    		    }
+
+    		    process_post(&report_to_gateway, PROCESS_EVENT_MSG, 0);
+
+    		    packetbuf_copyfrom(&tx_contacts ,15);
+
+    		    broadcast_send(&broadcast);
+
+    		    printf("[PROCESS_sync_broadcasting] Sync message sent in channel %d with power: %d\r\n", 14, 3);
+    		    printf("%s \n\r", tx_contacts.type);
+
+    		    // self-event collect.
+    		    int status = Random_Input();
+    		    Status_Record(node_id, status);
+    		    if (status !=0){
+    		    	report_end_sync = 1;
+    		    	printf("[PROCESS_sync_broadcasting] self-event detected.\n\r");
+    		    }
+
+    		    etimer_set(&sync_timer, broadcast_time_interval * CLOCK_SECOND);
+    		    leds_off(LEDS_BLUE);
+    		}
+    		else{
+    		    printf("[PROCESS_sync_broadcasting] duty finished.\n\r");
+    		    process_post(&head_change, PROCESS_EVENT_MSG, 0);
+    		}
     	}
-    	else if (node_id == head_id && ev == PROCESS_EVENT_TIMER) {
-        	if (etimer_expired(&sync_timer)){
-        		if (Remain_Duty()) {
-     		       	leds_on(LEDS_BLUE);
-    	        	//fill the packet buffer
-      		      	strcpy(tx_contacts.type, "Syncing");
-      		      	packetbuf_copyfrom(&tx_contacts ,10);
-
-            		broadcast_send(&broadcast);
-
-            		printf("Sync message sent in channel %d with power: %d\r\n", 14, 3);
-            		etimer_reset(&sync_timer);
-            		leds_off(LEDS_BLUE);
-        		}
-        		else{
-        			printf("duty finished.\n\r");
-        			process_post(&head_change, PROCESS_EVENT_MSG, 0);
-        		}
-        	}
-
-        }
-        // add more function to loop the process it self.
     }
     PROCESS_END();
 }
 
+// process that report the data to gateway
+PROCESS_THREAD(report_to_gateway, ev, data){
+	static uint8_t report_delay_interval = GATEWAY_INTERVAL;
+
+	PROCESS_EXITHANDLER(unicast_close(&unicast);)
+
+    static struct etimer delay;
+
+	PROCESS_BEGIN();
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
+	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, 3);
+
+	unicast_open(&unicast, UNICAST_GATEWAY_CHANNEL, &unicast_call);
+
+	while(1){
+		PROCESS_WAIT_EVENT();
+		linkaddr_t addr;
+		if(ev == PROCESS_EVENT_MSG){
+			etimer_set(&delay, report_delay_interval * CLOCK_SECOND);
+		}
+		else if (ev == PROCESS_EVENT_TIMER){
+			if (etimer_expired(&delay) && report_end_sync){
+				leds_on(LEDS_RED);
+				addr.u8[0] = (gateway_id >> 8) & 0xFF;
+				addr.u8[1] = gateway_id & 0xFF;
+
+				Prepare_Gate_Report(&tx_gateway_report);
+
+				for (int i=0; i<6; i++){
+				    printf("%d ", tx_gateway_report.node_list[i]);
+				}
+				printf(" \n\r");
+				for (int i=0; i<6; i++){
+				    printf("%d ", tx_gateway_report.node_bool[i]);
+				}
+				printf(" \n\r");
+				for (int i=0; i<6; i++){
+				    printf("%d ", tx_gateway_report.node_status[i]);
+				}
+				printf(" \n\r");
+
+				packetbuf_copyfrom(&tx_gateway_report, 100);
+				unicast_send(&unicast, &addr);
+				printf("[PROCESS_report_to_gateway] Send to Gateway.\n\r");
+
+				report_end_sync = 0;
+				Reset_Node_Status();
+
+				leds_off(LEDS_RED);
+		    }
+		}
+	}
+
+	PROCESS_END();
+}
+
+// process used to switch the cluster head
 PROCESS_THREAD(head_change, ev, data){
 
 	PROCESS_EXITHANDLER(broadcast_close(&broadcast));
@@ -267,13 +397,22 @@ PROCESS_THREAD(head_change, ev, data){
 			if (etimer_expired(&delay)){
 				strcpy(tx_contacts.type, "Switching");
 				head_id = Get_Next_CH(head_id);
-				tx_contacts.nodeid = head_id;
-				printf("H_Node %d:, Change head to %d\n\r", node_id, tx_contacts.nodeid);
 
-				packetbuf_copyfrom(&tx_contacts ,100);
-				broadcast_send(&broadcast);
+				if (head_id != node_id){
+					tx_contacts.nodeid = head_id;
+				    printf("[PROCESS_head_change] H_Node %d:, Change head to %d\n\r", node_id, tx_contacts.nodeid);
+				    packetbuf_copyfrom(&tx_contacts ,100);
+				    broadcast_send(&broadcast);
 
-				printf("Switch message sent in channel %d with power: %d\r\n", 14, 3);
+				    printf("Switch message sent in channel %d with power: %d\r\n", 14, 3);
+				    process_post(&failure_countdown, PROCESS_EVENT_MSG, 0);
+				    Reset_Topo();
+				}
+				else {
+					Reset_Duty(0);
+					process_post(&sync_broadcasting, PROCESS_EVENT_MSG, 0);
+				}
+
 				leds_off(LEDS_YELLOW);
 			}
 		}
@@ -282,39 +421,51 @@ PROCESS_THREAD(head_change, ev, data){
 	PROCESS_END();
 }
 
+// process used for free node to self-organized network
 PROCESS_THREAD(node_initial, ev, data){
 
-	node_id = (linkaddr_node_addr.u8[1] & 0xFF);
-
-	PROCESS_EXITHANDLER( printf("This where we start!\n\r");)
+	PROCESS_EXITHANDLER( printf("[PROCESS_node_initial] Join or construct the network. \n\r");)
 	PROCESS_BEGIN();
 
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, 14);
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, 3);
 
-	static uint8_t initial = DELAY_INTERVAL;
-	static uint8_t overhead = BROADCAST_INTERVAL;
+	static uint8_t overhead = 4;
 
 	static struct etimer delay;
-	etimer_set(&delay, (initial * node_id + overhead) * CLOCK_SECOND);
 
 	while(1){
-		if(node_id == head_id){
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&delay));
-		leds_on(LEDS_GREEN);
-		process_post(&sync_broadcasting, PROCESS_EVENT_MSG, 0);
-		leds_off(LEDS_GREEN);
+		PROCESS_WAIT_EVENT();
+		if(ev == PROCESS_EVENT_MSG){
+			etimer_set(&delay, 0.5 * node_id * overhead * CLOCK_SECOND);
+		    leds_on(LEDS_GREEN);
 		}
-		else{
-		    PROCESS_WAIT_EVENT();
+		else if (ev == PROCESS_EVENT_TIMER){
+			leds_off(LEDS_GREEN);
+			if (etimer_expired(&delay) && Node_Is_Free()){
+				printf("[PROCESS_node_initial] Not Received Any Syncing Frame, Set self as CH.\n\r");
+				head_id = node_id;
+				Set_Free(0);
+				Reset_Duty(0);
+				Reset_Topo();
+				process_post(&sync_broadcasting, PROCESS_EVENT_MSG, 0);
+			}
 		}
 	}
-
 	PROCESS_END();
 }
 
+// Process used to start the initial process
+PROCESS_THREAD(start_node_initial, ev, data){
 
-// new process faliure counter: similar to the sync broadcasting in structure,
-// set a num to decrease every etimer, and reset when msg received.
-// when 0 reached, run process node_initial.
+	node_id = (linkaddr_node_addr.u8[1] & 0xFF);
+	Setup_Topo(node_id);
 
+	PROCESS_EXITHANDLER( printf("[PROCESS_node_initial] Start the node! \n\r");)
+	PROCESS_BEGIN();
+	printf("[PROCESS_node_initial] Process Start! \n\r");
+
+	process_post(&node_initial, PROCESS_EVENT_MSG, 0);
+
+	PROCESS_END();
+}

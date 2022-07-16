@@ -1,9 +1,6 @@
 CONTIKI_PROJECT = mon_node
 all: $(CONTIKI_PROJECT)
 
-PROJECT_SOURCEFILES += routing.c
-PROJECT_SOURCEFILES += buffer.c
-PROJECT_SOURCEFILES += helpers.c
 PROJECT_SOURCEFILES += cluster_head.c
 PROJECT_SOURCEFILES += cluster_member.c
 
