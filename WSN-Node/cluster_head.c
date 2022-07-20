@@ -2,21 +2,33 @@
 
 // variables
 static uint8_t self_id;
-static uint8_t duty_cycle = 5;
+static uint8_t duty_cycle = 3;
 static int node_free = 1;
+static int report_cycle = 4;
 
 static uint8_t node_list[6] = {1, 2, 3, 4, 5, 6};
 static int node_bool[6] = {0, 0, 0, 0, 0, 0};
 static uint8_t node_status[6] = {9, 9, 9, 9, 9, 9};
 static int node_default[6] = {0, 0, 0, 0, 0, 0};
 
-
+static int check_counter = 100;
+static int event_counter = 80;
 
 // functions used to calculate the duty time
-// depends on: event counter, duty counter, preset event probability, remaining energy*
+// depends on: event counter, check counter, preset event probability
 void Cal_Duty(){
+	int prob = 10 - (10 * event_counter) / check_counter;
+	duty_cycle = 3 + prob;
+}
 
-	duty_cycle = 5;
+void Event_record(int status){
+	if (status == 1){
+		event_counter = event_counter + 1;
+		check_counter = check_counter + 1;
+	}
+	else{
+		check_counter = check_counter + 1;
+	}
 }
 
 // checking the remaining duty time, returns 1 when >0,
@@ -35,7 +47,19 @@ int Remain_Duty(){
 // at the end or beginning of duty, collect the data
 int Need_Report(){
 	int true = 0;
-	if (duty_cycle == 0 || duty_cycle == 4){
+
+	if (report_cycle == 4){
+		true = 1;
+		report_cycle--;
+	}
+	else if (report_cycle == 0){
+		report_cycle = 4;
+	}
+	else{
+		report_cycle--;
+	}
+
+	if (duty_cycle == 0){
 		true = 1;
 	}
 
@@ -44,16 +68,25 @@ int Need_Report(){
 
 // used to reset the duty time when input is 0, others resets manually.
 void Reset_Duty(int duty){
+	report_cycle = 4;
+
 	if(duty == 0){
 		Cal_Duty();
-		printf("[CH_Reset_Duty] Reset by Cal_Duty().\n\r");
+		int seed = event_counter * self_id;
+		srand(seed);
+		printf("[CH_Reset_Duty] Reset by Cal_Duty().   ");
+		printf("Check:%d Event:%d duty_cycle:%d \n\r", check_counter, event_counter, duty_cycle);
 	}
 	else if(duty > 0){
 		duty_cycle = duty;
-		printf("[CH_Reset_Duty] Reset manually.\n\r");
+		int seed = event_counter * self_id;
+		srand(seed);
+		printf("[CH_Reset_Duty] Reset manually.   ");
+		printf("Check:%d Event:%d duty_cycle:%d \n\r", check_counter, event_counter, duty_cycle);
 	}
 	else{
-		printf("[CH_Reset_Duty] Invalid input value. Reset fail.\n\r");
+		duty_cycle = 3;
+		printf("[CH_Reset_Duty] Invalid input value. Reset to default value.\n\r");
 	}
 }
 
@@ -114,7 +147,13 @@ void Status_Record(uint8_t id, uint8_t status){
 }
 
 void Setup_Topo(uint8_t node_id){
-    self_id = node_id;
+	self_id = node_id;
+	srand(rand() % node_id);
+
+	event_counter = 30 + rand() % 30;
+	int seed = event_counter * node_id;
+	srand(seed);
+
     int index = self_id - 1;
     for (int i=0; i<6; i++){
     	if(i == index){

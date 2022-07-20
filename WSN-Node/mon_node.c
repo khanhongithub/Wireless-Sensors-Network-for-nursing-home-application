@@ -27,7 +27,6 @@
 #define POWER_REGULAR 1
 #define POWER_INITIAL 0
 #define MAX_N 20
-#define MAX_PAYLOAD 80
 
 // global variable
 static uint8_t node_id;		           // Stores node id // @suppress("Type cannot be resolved")
@@ -67,7 +66,7 @@ static report_gateway tx_gateway_report;
 static struct unicast_conn unicast;
 static struct broadcast_conn broadcast;
 
-// process
+//--------------------- PROCESS CONTROL BLOCK ---------------------
 PROCESS(sync_broadcasting, "Sync frame broadcasting of the sensor code.");
 PROCESS(uni_reporting, "Used by CM, report to CH.");
 PROCESS(head_change, "Run when the duty time of current CH finished.");
@@ -86,7 +85,7 @@ AUTOSTART_PROCESSES(&sync_broadcasting,
 					&report_to_gateway,
 					&really_emergency);
 
-
+//------------------------ PROCESS' THREAD ------------------------
 // Defines the behavior of a cluster head received reporting frame.
 static void reporting_recv(struct unicast_conn *c, const linkaddr_t *from){
 
@@ -179,7 +178,6 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 
 	static struct etimer delay;
 
-
 	PROCESS_BEGIN();
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
@@ -192,6 +190,7 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 		if(ev == PROCESS_EVENT_MSG){
 			int send = 0;
 			int status = Random_Input();
+			Event_record(status);
 			if(to_report){
 				printf("[PROCESS_uni_reporting] Data collect. \n\r");
 				strcpy(tx_reports.type, "REPORT");
@@ -268,6 +267,7 @@ PROCESS_THREAD(sync_broadcasting, ev, data) {
 
     		    // self-event collect.
     		    int status = Random_Input();
+    		    Event_record(status);
     		    Status_Record(node_id, status);
     		    if (status !=0){
     		    	report_end_sync = 1;
@@ -377,7 +377,7 @@ PROCESS_THREAD(head_change, ev, data){
 				    Reset_Topo();
 				}
 				else {
-					Reset_Duty(0);
+					Reset_Duty(3);
 					process_post(&sync_broadcasting, PROCESS_EVENT_MSG, 0);
 				}
 

@@ -69,7 +69,6 @@ static report_gateway tx_gateway_report;
 static struct unicast_conn unicast;
 static struct broadcast_conn broadcast;
 
-
 // SENSOR Variables
 uint16_t pulse_buffer[20];
 uint16_t input;
@@ -189,7 +188,6 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 
 	static struct etimer delay;
 
-
 	PROCESS_BEGIN();
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
@@ -202,6 +200,7 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 		if(ev == PROCESS_EVENT_MSG){
 			int send = 0;
 			int status = Get_Sensor_Status();
+			Event_record(status);
 			if(to_report){
 				printf("[PROCESS_uni_reporting] Data collect. \n\r");
 				strcpy(tx_reports.type, "REPORT");
@@ -278,6 +277,7 @@ PROCESS_THREAD(sync_broadcasting, ev, data) {
 
     		    // self-event collect.
     		    int status = Get_Sensor_Status();
+    		    Event_record(status);
     		    Status_Record(node_id, status);
     		    if (status !=0){
     		    	report_end_sync = 1;
@@ -387,7 +387,7 @@ PROCESS_THREAD(head_change, ev, data){
 				    Reset_Topo();
 				}
 				else {
-					Reset_Duty(0);
+					Reset_Duty(3);
 					process_post(&sync_broadcasting, PROCESS_EVENT_MSG, 0);
 				}
 

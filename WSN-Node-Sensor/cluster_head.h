@@ -20,6 +20,8 @@ typedef struct{
 // functions
 void Cal_Duty();
 
+void Event_record(int status);
+
 void Reset_Duty(int duty);
 
 int Remain_Duty();
