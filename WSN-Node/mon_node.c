@@ -5,6 +5,7 @@
 #include "lib/random.h"
 #include "dev/leds.h"
 #include "dev/button-sensor.h"
+#include "dev/cc2538-rf.h"
 
 // Standard C includes:
 #include <stdio.h>
@@ -24,8 +25,8 @@
 #define GATEWAY_INTERVAL 3.5
 #define CHANNEL 14
 #define POWER_TO_GATEWAY 3
-#define POWER_REGULAR 1
-#define POWER_INITIAL 0
+#define POWER_REGULAR 0
+#define POWER_INITIAL -1
 #define MAX_N 20
 
 // global variable

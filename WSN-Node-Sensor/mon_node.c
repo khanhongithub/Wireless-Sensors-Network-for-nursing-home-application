@@ -24,8 +24,8 @@
 #define GATEWAY_INTERVAL 3.5
 #define CHANNEL 14
 #define POWER_TO_GATEWAY 3
-#define POWER_REGULAR 1
-#define POWER_INITIAL 0
+#define POWER_REGULAR 0
+#define POWER_INITIAL -1
 #define MAX_N 20
 // Reading frequency in seconds.
 #define TEMP_READ_INTERVAL CLOCK_SECOND*0.1
