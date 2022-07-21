@@ -42,26 +42,23 @@
 #include <math.h>       // For round
 
 // Reading frequency in seconds.
-#define TEMP_READ_INTERVAL CLOCK_SECOND*2
+#define TEMP_READ_INTERVAL CLOCK_SECOND*1
 
+typedef struct{
+	uint8_t node_list[6];
+	int node_bool[6];
+	uint8_t node_status[6];
+}packet;
 
 /*** CONNECTION DEFINITION***/
-
+static void unicast_recv(struct unicast_conn *c, const linkaddr_t *from);
+static struct unicast_conn unicast;
+static const struct unicast_callbacks unicast_call = {unicast_recv};
 /**
  * Callback function for received packet processing.
  *
  */
-static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
 
-	leds_on(LEDS_GREEN);
-
-	uint8_t len = strlen( (char *)packetbuf_dataptr() );
-	int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-
-	printf("Got RX packet (broadcast) from: 0x%x%x, len: %d, RSSI: %d\r\n",from->u8[0], from->u8[1],len,rssi);
-
-	leds_off(LEDS_GREEN);
-}
 
 
 //function for outputting the lux value read from sensor
@@ -97,12 +94,12 @@ static int getHumiSensorValue(uint16_t adc_input){
 /**
  * Connection information
  */
-static struct broadcast_conn broadcastConn;
+//static struct broadcast_conn broadcastConn;
 
 /**
  * Assign callback functions to the connection
  */
-static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
+//static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
 
 /*** CONNECTION DEFINITION END ***/
 
@@ -118,7 +115,19 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	/* variables to be used */
 	static struct etimer temp_reading_timer;
 	static uint16_t adc1_value, adc3_value;
+	linkaddr_t addr;
+	uint8_t gateway_id = 7;
+	packet packet_send;
 
+	packet_send.node_list[0] = 9;
+	packet_send.node_bool[0] = 9;
+
+	for (int i=1; i<6; i++){
+		packet_send.node_list[i] = 0;
+		packet_send.node_bool[i] = 0;
+	}
+
+	PROCESS_EXITHANDLER( unicast_close(&unicast); )
 	PROCESS_BEGIN ();
 
 
@@ -133,7 +142,7 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	/*
 	 * open the connection
 	 */
-	broadcast_open(&broadcastConn,129,&broadcast_callbacks);
+	unicast_open(&unicast,149,&unicast_call);
 
 
 	/* Configure the ADC ports */
@@ -149,7 +158,7 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 		/* If timer expired, pront sensor readings */
 	    if(ev == PROCESS_EVENT_TIMER) {
 
-	    	leds_on(LEDS_PURPLE);
+	    	leds_on(LEDS_GREEN);
 
 	    	/*
 	    	 * Read ADC values. Data is in the 12 MSBs
@@ -164,15 +173,27 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	    	printf("\r\nADC1 value [Raw] = %d", adc1_value);
 	        printf("\r\nADC3 value [Raw] = %d", adc3_value);
 
-
-    		leds_off(LEDS_PURPLE);
-
     		int Temp = getTempSensorValue(adc1_value);
     		int Humi = getHumiSensorValue(adc3_value);
 
-
     		printf("\r\nADC1 value [Reverted] = %d\n", Temp);
     		printf("\r\nADC3 value [Reverted] = %d\n", Humi);
+
+    		packet_send.node_status[0] = Temp;
+    		packet_send.node_status[1] = Humi;
+    		packet_send.node_status[2] = 0;
+    		packet_send.node_status[3] = 0;
+    		packet_send.node_status[4] = 0;
+    		packet_send.node_status[5] = 0;
+
+    		addr.u8[0] = (gateway_id >> 8) & 0xFF;
+    		addr.u8[1] = gateway_id & 0xFF;
+
+    		packetbuf_copyfrom(&packet_send, 100);
+    		unicast_send(&unicast, &addr);
+
+
+    		leds_off(LEDS_GREEN);
 
     		etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
 	    }
@@ -181,5 +202,11 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	PROCESS_END ();
 }
 
+
+//functions
+static void
+unicast_recv(struct unicast_conn *c, const linkaddr_t *from) {
+
+}
 
 

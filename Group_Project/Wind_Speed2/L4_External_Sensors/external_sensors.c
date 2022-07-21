@@ -44,6 +44,12 @@
 // Reading frequency in seconds.
 #define TEMP_READ_INTERVAL CLOCK_SECOND*0.2
 
+// The packet stucture
+typedef struct{
+	uint8_t node_list[6];
+	int node_bool[6];
+	uint8_t node_status[6];
+}packet;
 
 /*** CONNECTION DEFINITION***/
 
@@ -51,17 +57,6 @@
  * Callback function for received packet processing.
  *
  */
-static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
-
-	leds_on(LEDS_GREEN);
-
-	uint8_t len = strlen( (char *)packetbuf_dataptr() );
-	int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-
-	printf("Got RX packet (broadcast) from: 0x%x%x, len: %d, RSSI: %d\r\n",from->u8[0], from->u8[1],len,rssi);
-
-	leds_off(LEDS_GREEN);
-}
 
 
 //function for outputting the lux value read from sensor
@@ -69,17 +64,7 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
     		//@param b: calibration value b inscribed on the back of the sensor
     		//@param adc_input: phidget input value. Use ZOUL_SENSORS_ADC1 or ZOUL_SENSORS_ADC3 depending on where the sensor is connected to.
     		//@return int : lux value with a max of 1000.
-static int getLightSensorValue(float m, float b, uint16_t adc_input){
-    		//Convert the voltage in lux with the provided formula
-    		int luminosity = m*(adc_input/4.096)+b;
-    		//Return the value of the light with maximum value equal to 1000
-    		if (luminosity<1)
-			return 1;
-    		else if (luminosity>1000)
-    			return 1000;
-    		else
-    			return luminosity;
-}
+
 
 int windspeed_buffer[20];
 int i = 0;
@@ -89,12 +74,14 @@ int wind_speed;
 /**
  * Connection information
  */
-static struct broadcast_conn broadcastConn;
-
+//static struct broadcast_conn broadcastConn;
+static void unicast_recv(struct unicast_conn *c, const linkaddr_t *from);
+static struct unicast_conn unicast;
+static const struct unicast_callbacks unicast_call = {unicast_recv};
 /**
  * Assign callback functions to the connection
  */
-static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
+//static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
 
 /*** CONNECTION DEFINITION END ***/
 
@@ -110,9 +97,14 @@ AUTOSTART_PROCESSES (&ext_sensors_process);
 PROCESS_THREAD (ext_sensors_process, ev, data) {
 
 	/* variables to be used */
+	linkaddr_t addr;
+	uint8_t gateway_id = 7;
 	static struct etimer temp_reading_timer;
+	packet packet_send;
+	packet_send.node_list[0] = 8;
+	packet_send.node_bool[0] = 8;
 	//static uint16_t adc1_value;
-
+	PROCESS_EXITHANDLER( unicast_close(&unicast); )
 	PROCESS_BEGIN ();
 
 
@@ -127,7 +119,7 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	/*
 	 * open the connection
 	 */
-	broadcast_open(&broadcastConn,129,&broadcast_callbacks);
+	unicast_open(&unicast,149,&unicast_call);
 
 
 	/* Configure the ADC ports */
@@ -143,7 +135,7 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 		/* If timer expired, pront sensor readings */
 	    if(ev == PROCESS_EVENT_TIMER) {
 
-	    	leds_on(LEDS_PURPLE);
+	    	//leds_on(LEDS_PURPLE);
 
 	    	/*
 	    	 * Read ADC values. Data is in the 12 MSBs
@@ -151,14 +143,25 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	    	windspeed_buffer[i] = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
 
 	    	if (i>=19){
+	    		leds_on(LEDS_GREEN);
 	    		for (int j=0;j<19;j++)
 	    		{
 	    			if (windspeed_buffer[j+1]-windspeed_buffer[j]>1500){
 	    				n++;
 	    			}
 	    		}
-	    		wind_speed = n/0.6;
-	    		printf("\r\nThe wind speed = %d km/h", wind_speed);
+	    		wind_speed = n*0.6;
+	    		packet_send.node_status[0] = wind_speed;
+	    		addr.u8[0] = (gateway_id >> 8) & 0xFF;
+	    		addr.u8[1] = gateway_id & 0xFF;
+
+
+
+	    		packetbuf_copyfrom(&packet_send, 100);
+	    		unicast_send(&unicast, &addr);
+
+	    		leds_off(LEDS_GREEN);
+
                 i = 0;
                 n = 0;
 	    		}
@@ -167,14 +170,9 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	            i++;
 	    	}
 
-	    	/*
-	    	 * Print Raw values
-	    	 */
-
-	    	//printf("\r\nADC1 value [Raw] = %d", windspeed_buffer[1]);
 
 
-    		leds_off(LEDS_PURPLE);
+    		//leds_off(LEDS_PURPLE);
 
 
     		etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
@@ -184,3 +182,13 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	PROCESS_END ();
 }
 
+
+
+
+// funcations
+
+
+static void
+unicast_recv(struct unicast_conn *c, const linkaddr_t *from) {
+
+}
