@@ -5,7 +5,6 @@
 #include "lib/random.h"
 #include "dev/leds.h"
 #include "dev/button-sensor.h"
-#include "dev/cc2538-rf.h"
 
 // Standard C includes:
 #include <stdio.h>
@@ -19,7 +18,7 @@
 #define BROADCAST_EMERGENCY_CHANNEL 135
 #define BROADCAST_RIME_CHANNEL 129
 #define UNICAST_RIME_CHANNEL 146
-#define UNICAST_GATEWAY_CHANNEL 149
+#define BROADCAST_GATEWAY_CHANNEL 149
 #define BROADCAST_INTERVAL 4
 #define DELAY_INTERVAL 0.5
 #define GATEWAY_INTERVAL 3.5
@@ -32,7 +31,6 @@
 // global variable
 static uint8_t node_id;		           // Stores node id // @suppress("Type cannot be resolved")
 static uint8_t head_id = 255;          // Stores head id // @suppress("Type cannot be resolved")
-static uint8_t gateway_id = 7;         // Stores gateway id // @suppress("Type cannot be resolved")
 
 int to_report = 0;                     // used by cm as flag to tell if it is reporting round
 int report_end_sync = 0;               // used by ch as flag to tell if send to gateway at this polling
@@ -291,7 +289,7 @@ PROCESS_THREAD(sync_broadcasting, ev, data) {
 PROCESS_THREAD(report_to_gateway, ev, data){
 	static uint8_t report_delay_interval = GATEWAY_INTERVAL; // @suppress("Type cannot be resolved")
 
-	PROCESS_EXITHANDLER(unicast_close(&unicast);)
+	PROCESS_EXITHANDLER(broadcast_close(&broadcast));
 
     static struct etimer delay;
 
@@ -299,19 +297,16 @@ PROCESS_THREAD(report_to_gateway, ev, data){
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_TO_GATEWAY);
 
-	unicast_open(&unicast, UNICAST_GATEWAY_CHANNEL, &unicast_call);
+	broadcast_open(&broadcast, BROADCAST_GATEWAY_CHANNEL, &syncing_call);
 
 	while(1){
 		PROCESS_WAIT_EVENT();
-		linkaddr_t addr;
 		if(ev == PROCESS_EVENT_MSG){
 			etimer_set(&delay, report_delay_interval * CLOCK_SECOND);
 		}
 		else if (ev == PROCESS_EVENT_TIMER){
 			if (etimer_expired(&delay) && report_end_sync){
 				leds_on(LEDS_RED);
-				addr.u8[0] = (gateway_id >> 8) & 0xFF;
-				addr.u8[1] = gateway_id & 0xFF;
 
 				Prepare_Gate_Report(&tx_gateway_report);
 
@@ -329,7 +324,7 @@ PROCESS_THREAD(report_to_gateway, ev, data){
 				printf(" \n\r");
 
 				packetbuf_copyfrom(&tx_gateway_report, 100);
-				unicast_send(&unicast, &addr);
+				broadcast_send(&broadcast);
 				printf("[PROCESS_report_to_gateway] Send to Gateway.\n\r");
 
 				report_end_sync = 0;
