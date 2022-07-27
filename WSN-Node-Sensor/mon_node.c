@@ -25,16 +25,16 @@
 #define CHANNEL 14
 #define GATEWAY_CHANNEL 13
 #define POWER_TO_GATEWAY 3
-#define POWER_REGULAR -9
-#define POWER_INITIAL -9
+#define POWER_REGULAR -5
+#define POWER_INITIAL -5
 #define MAX_N 20
 
 // Reading frequency in seconds.
-#define TEMP_READ_INTERVAL CLOCK_SECOND*0.1
+#define TEMP_READ_INTERVAL CLOCK_SECOND*0.05
 #define WAITING_INTERVAL CLOCK_SECOND*1
 
 // SENSOR Variables
-uint16_t pulse_buffer[20];
+static uint16_t pulse_buffer[40];
 uint16_t input;
 static int i = 0;
 
@@ -538,9 +538,8 @@ PROCESS_THREAD(really_emergency, ev, data){
 //******Sensor Process******//
 PROCESS_THREAD (ext_sensors_process, ev, data) {
 
+	/* variables to be used */
 	static struct etimer temp_reading_timer;
-	int heart;
-
 	PROCESS_BEGIN ();
 
 	/* Configure the ADC ports */
@@ -549,37 +548,34 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
 
 	while (1) {
-		PROCESS_WAIT_EVENT();  // let process continue
-		/* If timer expired, print sensor readings */
-	    if(ev == PROCESS_EVENT_TIMER) {
 
+		PROCESS_WAIT_EVENT();  // let process continue
+		/* If timer expired, pront sensor readings */
+	    if(ev == PROCESS_EVENT_TIMER) {
 	    	/*
 	    	 * Read ADC values. Data is in the 12 MSBs
 	    	 */
-	    	input = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
-	    	pulse_buffer[i] = input;
-
-	    	// printf("Heart beat: %d\r\n", pulse_buffer[i]);
+	    	pulse_buffer[i] = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
 	    	/*
 	    	 * Print Raw values
 	    	 */
-            i++;
+            if (i >= 39){
+                int var = getVarianceValue(pulse_buffer);
 
-            if (i >= 19){
-            	uint16_t var = getVarianceValue(pulse_buffer);
-
-                if (var < 1300){
-                	heart = 2;   // disconnected
-                }
-                else if (var > 2000){
-                	heart = 1;   // unhealthy
+                if (var > 100){
+            	    int bpm = FindBPM(pulse_buffer);
+                    printf("[ext_sensors_process] Heart rate = %d\n\r", bpm);
+                    Threshold(bpm);
                 }
                 else{
-                	heart = 0;   // healthy
+                	Update_Status(2);
                 }
 
-                Update_Status(heart);
+                printf("Variance value = %d\n\r", var);
 			    i = 0;
+            }
+            else{
+                i++;
             }
 
     		etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);

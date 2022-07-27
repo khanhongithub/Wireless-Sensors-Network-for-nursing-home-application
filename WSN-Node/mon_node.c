@@ -25,8 +25,8 @@
 #define CHANNEL 14
 #define GATEWAY_CHANNEL 13
 #define POWER_TO_GATEWAY 3
-#define POWER_REGULAR -9
-#define POWER_INITIAL -9
+#define POWER_REGULAR -5
+#define POWER_INITIAL -5
 #define MAX_N 20
 
 // global variable

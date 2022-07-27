@@ -62,7 +62,7 @@ int Need_Report(){
 	if (duty_cycle == 0){
 		true = 1;
 	}
-
+	true = 1;
 	return true;
 }
 

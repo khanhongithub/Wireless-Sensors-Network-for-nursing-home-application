@@ -24,3 +24,7 @@ int Get_Sensor_Status();
 void Update_Status(int status);
 
 uint16_t getVarianceValue(uint16_t adc_input[20]);
+
+int FindBPM(uint16_t adc_input[]);
+
+void Threshold(int bpm);
