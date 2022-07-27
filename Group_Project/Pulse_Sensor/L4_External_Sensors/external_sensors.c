@@ -40,7 +40,7 @@
 // Standard C includes:
 #include <stdio.h>      // For printf.
 #include "math.h"
-
+#include <stdlib.h>
 // Reading frequency in seconds.
 #define TEMP_READ_INTERVAL CLOCK_SECOND*0.05
 #define WAITING_INTERVAL CLOCK_SECOND*1
@@ -65,31 +65,65 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
 }
 
 
-static int FindBPM(int a[], int n, int *pMaxPos)
+static int FindBPM(uint16_t adc_input[])
    {
-	 int i,max;
-	 max = a[0];
-	 *pMaxPos = 0;
+       int a = 0;
+       int b = 0;
+       uint16_t sum = 0;
+       uint16_t length = 0;
+   	   int average = 0;
+       int threshold = adc_input[0];
 
-	 for (i=0; i<n; i++)
-	 {
-		 if (a[i]>max){
-			 max = a[i];
-			 *pMaxPos = i;
-		 }
-	 }
-	 return max;
+       for (int j = 0; j < 40; j++){
+    	   if (adc_input[j]>threshold){
+    		   threshold = adc_input[j];
+    	   }
+    	   sum += adc_input[j];
+       }
+
+	   length = 40;
+	   average = sum/length;
+       threshold = threshold - (average/5);
+
+       for (int m=1; m < 40; m++){
+    	   if (adc_input[m-1]<=threshold && adc_input[m]>threshold){
+    		   a = m;
+    		   break;
+    	   }
+       }
+
+       if (a < 39){
+       for (int n=a+1; n<40; n++){
+    	   if (adc_input[n-1]<=threshold && adc_input[n]>threshold){
+    		   b = n;
+    		   break;
+    	   }
+       }
+       }
+       if ((a != 0 && b != 0)&&(a != b)){
+    	   printf("\r\n a = %d",a);
+    	   printf("\r\n b = %d",b);
+    	   return 60/((b-a)*0.05);
+       }
+
+       else {
+    	   printf("\r\n a = %d",a);
+    	   printf("\r\n b = %d",b);
+    	   return 0;
+       }
    }
 
 
-static double getVarianceValue(double adc_input[]){
-	double sum = 0;
-	int length = 0;
-	double average = 0;
-	double var = 0;
-    		for (int i = 0; i <=39; i++)
-    		{
-    			sum += adc_input[i];
+static double getVarianceValue(uint16_t adc_input[]){
+
+	int sum = 0;
+	uint16_t length = 0;
+	int average = 0;
+	uint16_t var = 0;
+
+	        for (int i = 0; i <=39; i++)
+	    	{
+    			    sum += adc_input[i];
     		}
 
     		length = 40;
@@ -97,7 +131,8 @@ static double getVarianceValue(double adc_input[]){
 
     		for (int j = 0; j <= 39; j++)
     		{
-    			var += pow(adc_input[j]-average,2)/length;
+    			var += abs(adc_input[j]-average)*abs(adc_input[j]-average);
+    		    var = var/length;
     		}
 
     			return var;
@@ -105,7 +140,7 @@ static double getVarianceValue(double adc_input[]){
 
 
 
-double pulse_buffer[40];
+
 int i = 0;
 
 
@@ -133,8 +168,8 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 
 	/* variables to be used */
 	static struct etimer temp_reading_timer;
-	static struct etimer waiting_timer;
-
+	//static struct etimer waiting_timer;
+	static uint16_t pulse_buffer[40];
 
 
 	PROCESS_BEGIN ();
@@ -175,28 +210,36 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	    	 * Read ADC values. Data is in the 12 MSBs
 	    	 */
 	    	pulse_buffer[i] = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
-	    	printf("\r\nHeart beat: %d", pulse_buffer[i]);
+	    	printf("\r\nHeart beat[%d]: %d",i, pulse_buffer[i]);
 
 	    	/*
 	    	 * Print Raw values
 	    	 */
 
 	        //printf("\r\nADC1 value [Raw] = %d", adc_value);
-            i++;
+
 
             if (i >= 39){
             int var = getVarianceValue(pulse_buffer);
 
-            if (var > 35000)
+
+            if (var > 50)
             {
             	printf("\r\nHeart beat detected!");
-
+            	int bpm = FindBPM(pulse_buffer);
+                printf("\r\nHeart rate = %d", bpm);
             }
 
             printf("\r\nVariance value = %d", var);
+
 			//etimer_set(&waiting_timer, WAITING_INTERVAL);
 			i = 0;
             }
+
+            else{
+                i++;
+            }
+
 
     		leds_off(LEDS_PURPLE);
 
