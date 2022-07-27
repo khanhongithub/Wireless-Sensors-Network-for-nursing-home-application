@@ -103,7 +103,7 @@ void MainWindow::receive()
 
                 // Insert your code here - *Use parts of previous exercises if needed
                 if (str.contains("Temp")){
-
+                    lineTempTo0.setLine(xl[6], yl[6], xl[8], yl[8]);
                     QStringList temp_list = str.split(QRegExp("\\s"));
                     qDebug() << "Str value: " << str;
 
@@ -133,7 +133,7 @@ void MainWindow::receive()
                                     ui->Temp->update();
                                 }
 
-                                if ((humi < 30)||(humi > 60)){
+                                if ((humi < 30)||(humi > 70)){
                                     QPalette pal = ui->Humi->palette();
                                     pal.setColor(QPalette::Button, QColor(Qt::red));
                                     ui->Humi->setAutoFillBackground(true);
@@ -153,9 +153,10 @@ void MainWindow::receive()
 
                 }
          }
+                    this->repaint();    // Update paths between gateway and external sensor node
     }
-                if (str.contains("WindSpeed")){
-
+                if (str.contains("Windspeed")){
+                    lineWindTo0.setLine(xl[6], yl[6], xl[7], yl[7]);
                     QStringList wind_list = str.split(QRegExp("\\s"));
                     qDebug() << "Str value: " << str;
 
@@ -163,7 +164,7 @@ void MainWindow::receive()
                         qDebug() << "List size " << wind_list.size();
                         for (int i=0; i < wind_list.size(); i++){
                             qDebug() << "List value "<< i <<" "<< wind_list.at(i);
-                            if (wind_list.at(i) == "Wind_Speed:") {
+                            if (wind_list.at(i) == "Windspeed:") {
                                 int wind = wind_list.at(i+1).toInt();
                                 ui->Wind -> setText(QString::number(wind));
 
@@ -186,6 +187,7 @@ void MainWindow::receive()
 
                 }
          }
+             this->repaint();    // Update paths between gateway and external sensor node
     }
 
 
@@ -196,6 +198,9 @@ void MainWindow::receive()
                     line40.setLine(0,0,0,0);
                     line50.setLine(0,0,0,0);
                     line60.setLine(0,0,0,0);
+
+                    lineTempTo0.setLine(0,0,0,0);
+                    lineWindTo0.setLine(0,0,0,0);
 
                     line12.setLine(0,0,0,0);
                     line13.setLine(0,0,0,0);
@@ -465,12 +470,37 @@ void MainWindow::receive()
                             }
 
                             if (list.at(i) == "Status:") {
+
                                 for (int j=0; j<6; j++){
+                                    if (list.at(i+j+1).toInt()==3){
+                                        if (j==0){
+                                            ui->Node_1 -> setText("1!!!");
+                                        }
+                                        else if (j==1){
+                                            ui->Node_2 -> setText("2!!!");
+                                        }
+                                        else if (j==2){
+                                            ui->Node_3 -> setText("3!!!");
+                                        }
+                                        else if (j==3){
+                                            ui->Node_4 -> setText("4!!!");
+                                        }
+                                        else if (j==4){
+                                            ui->Node_5 -> setText("5!!!");
+                                        }
+                                        else if (j==5){
+                                            ui->Node_6 -> setText("6!!!");
+                                        }
+                                    }
+                                    else{
                                     status[j] = list.at(i+j+1).toInt();
                                 }
+                              }
                             }
 
-                        }
+                          }
+
+
                     }
 
                 }
@@ -515,6 +545,7 @@ void MainWindow::paintEvent(QPaintEvent *e){
             painter.setBrush(Qt::black);
             painter.drawEllipse(x[j], y[j], 50, 50); //disconnected or default
         }
+
     }
 
 
@@ -524,9 +555,6 @@ void MainWindow::paintEvent(QPaintEvent *e){
     painter.setBrush(Qt::red);
     painter.drawEllipse(x[7], y[7], 50, 50); //wind
     painter.drawEllipse(x[8], y[8], 50, 50); //temperature
-
-    lineTempTo0.setLine(xl[6], yl[6], xl[8], yl[8]);
-    lineWindTo0.setLine(xl[6], yl[6], xl[7], yl[7]);
 
     painter.drawLine(line10);
     painter.drawLine(line20);
