@@ -164,6 +164,21 @@ report_gateway *Prepare_Gate_Report(report_gateway *packet){
     return packet;
 }
 
+report_gateway *Prepare_Emergency_Report(report_gateway *packet){
+	int index = self_id - 1;
+    for (int i=0; i<6; i++){
+    	packet->node_list[i] = 0;
+    	packet->node_bool[i] = node_default[i];
+    	if (i == index){
+    		packet->node_status[i] = 3;
+    	}
+    	else{
+    		packet->node_status[i] = 9;
+    	}
+    }
+    return packet;
+}
+
 void Reset_Node_Status(){
 	for (int i=0; i<6; i++){
 	    node_status[i] = 9;

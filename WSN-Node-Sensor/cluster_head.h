@@ -42,6 +42,8 @@ void Setup_Topo(uint8_t node_id);
 
 report_gateway *Prepare_Gate_Report(report_gateway *packet);
 
+report_gateway *Prepare_Emergency_Report(report_gateway *packet);
+
 void Reset_Node_Status();
 
 void Reset_Topo();

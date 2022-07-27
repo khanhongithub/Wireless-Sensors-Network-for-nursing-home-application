@@ -23,13 +23,20 @@
 #define DELAY_INTERVAL 0.5
 #define GATEWAY_INTERVAL 3.5
 #define CHANNEL 14
+#define GATEWAY_CHANNEL 13
 #define POWER_TO_GATEWAY 3
-#define POWER_REGULAR 0
-#define POWER_INITIAL -1
+#define POWER_REGULAR -9
+#define POWER_INITIAL -9
 #define MAX_N 20
+
 // Reading frequency in seconds.
 #define TEMP_READ_INTERVAL CLOCK_SECOND*0.1
 #define WAITING_INTERVAL CLOCK_SECOND*1
+
+// SENSOR Variables
+uint16_t pulse_buffer[20];
+uint16_t input;
+static int i = 0;
 
 // global variable
 static uint8_t node_id;		           // Stores node id // @suppress("Type cannot be resolved")
@@ -63,15 +70,11 @@ typedef struct{
 static data_report tx_reports;
 
 static report_gateway tx_gateway_report;
+static report_gateway tx_emergency;
 
 // Creates broadcast and unicast connection.
 static struct unicast_conn unicast;
 static struct broadcast_conn broadcast;
-
-// SENSOR Variables
-uint16_t pulse_buffer[20];
-uint16_t input;
-static int i = 0;
 
 //--------------------- PROCESS CONTROL BLOCK ---------------------
 PROCESS(sync_broadcasting, "Sync frame broadcasting of the sensor code.");
@@ -188,8 +191,6 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 	static struct etimer delay;
 
 	PROCESS_BEGIN();
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
 
 	unicast_open(&unicast, UNICAST_RIME_CHANNEL, &unicast_call);
 
@@ -227,6 +228,8 @@ PROCESS_THREAD(uni_reporting, ev, data) {
 		    	addr.u8[0] = (head_id >> 8) & 0xFF;
 		        addr.u8[1] = head_id & 0xFF;
 
+		        NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
+		        NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
 		        packetbuf_copyfrom(&tx_reports, 100);
 		        unicast_send(&unicast, &addr);
 		        printf("[PROCESS_uni_reporting] Send.\n\r");
@@ -248,9 +251,6 @@ PROCESS_THREAD(sync_broadcasting, ev, data) {
 	PROCESS_EXITHANDLER(broadcast_close(&broadcast));
 	PROCESS_BEGIN();
 
-    NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
-    NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
-
     broadcast_open(&broadcast, BROADCAST_RIME_CHANNEL, &syncing_call);
 
     while(1) {
@@ -269,6 +269,14 @@ PROCESS_THREAD(sync_broadcasting, ev, data) {
     		    }
 
     		    process_post(&report_to_gateway, PROCESS_EVENT_MSG, 0);
+
+    		    NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
+    		    NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
+    		    /* For debug
+    		    radio_value_t a = 0;
+    		    NETSTACK_CONF_RADIO.get_value(RADIO_PARAM_TXPOWER, &a);
+    		    printf("sync real power %d\n\r", a);
+    		    */
 
     		    packetbuf_copyfrom(&tx_contacts ,15);
     		    broadcast_send(&broadcast);
@@ -304,8 +312,6 @@ PROCESS_THREAD(report_to_gateway, ev, data){
     static struct etimer delay;
 
 	PROCESS_BEGIN();
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_TO_GATEWAY);
 
 	broadcast_open(&broadcast, BROADCAST_GATEWAY_CHANNEL, &syncing_call);
 
@@ -333,6 +339,14 @@ PROCESS_THREAD(report_to_gateway, ev, data){
 				}
 				printf(" \n\r");
 
+				NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, GATEWAY_CHANNEL);
+				NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_TO_GATEWAY);
+				/* For debug
+				radio_value_t a = 0;
+				NETSTACK_CONF_RADIO.get_value(RADIO_PARAM_TXPOWER, &a);
+				printf("real power %d\n\r", a);
+				*/
+
 				packetbuf_copyfrom(&tx_gateway_report, 100);
 				broadcast_send(&broadcast);
 				printf("[PROCESS_report_to_gateway] Send to Gateway.\n\r");
@@ -354,9 +368,6 @@ PROCESS_THREAD(head_change, ev, data){
 	PROCESS_EXITHANDLER(broadcast_close(&broadcast));
 	PROCESS_BEGIN();
 
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
-
 	broadcast_open(&broadcast, BROADCAST_RIME_CHANNEL, &syncing_call);
 
 	static uint8_t switching_delay_interval = DELAY_INTERVAL;
@@ -376,6 +387,9 @@ PROCESS_THREAD(head_change, ev, data){
 				if (head_id != node_id){
 					tx_contacts.nodeid = head_id;
 				    printf("[PROCESS_head_change] H_Node %d:, Change head to %d\n\r", node_id, tx_contacts.nodeid);
+
+				    NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
+				    NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_REGULAR);
 				    packetbuf_copyfrom(&tx_contacts ,100);
 				    broadcast_send(&broadcast);
 
@@ -434,7 +448,6 @@ PROCESS_THREAD(node_initial, ev, data){
 	PROCESS_BEGIN();
 
 	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_INITIAL);
 
 	static uint8_t overhead = 4;
 	static struct etimer delay;
@@ -480,15 +493,10 @@ PROCESS_THREAD(really_emergency, ev, data){
 
 	PROCESS_EXITHANDLER(broadcast_close(&broadcast));
 	PROCESS_BEGIN();
+
 	button_sensor.configure(BUTTON_SENSOR_CONFIG_TYPE_INTERVAL, CLOCK_SECOND*2);
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, CHANNEL);
-	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_TO_GATEWAY);
-
-	broadcast_open(&broadcast, BROADCAST_EMERGENCY_CHANNEL, &syncing_call);
-
-	static syncing tx_emergency;
-	strcpy(tx_emergency.type, "Emergency");
-	tx_emergency.nodeid = node_id;
+	broadcast_open(&broadcast, BROADCAST_GATEWAY_CHANNEL, &syncing_call);
+	Prepare_Emergency_Report(&tx_emergency);
 
 	while(1) {
 	    PROCESS_WAIT_EVENT();
@@ -503,18 +511,31 @@ PROCESS_THREAD(really_emergency, ev, data){
 	            }
 	        }
 	    else if(ev == button_press_duration_exceeded){
-	        leds_on(LEDS_RED);
+	    	for (int i=0; i<6; i++){
+	    		printf("%d ", tx_emergency.node_list[i]);
+	    	}
+	        printf(" \n\r");
+	    	for (int i=0; i<6; i++){
+	    		printf("%d ", tx_emergency.node_bool[i]);
+	    	}
+	    	printf(" \n\r");
+	    	for (int i=0; i<6; i++){
+	    		printf("%d ", tx_emergency.node_status[i]);
+	    	}
+	    	printf(" \n\r");
 
-	        packetbuf_copyfrom(&tx_emergency ,20);
+	    	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_CHANNEL, GATEWAY_CHANNEL);
+	    	NETSTACK_CONF_RADIO.set_value(RADIO_PARAM_TXPOWER, POWER_TO_GATEWAY);
+	    	packetbuf_copyfrom(&tx_emergency, 100);
 	        broadcast_send(&broadcast);
-	        printf("[PROCESS_really_emergency] Emergency Node: %d, with type: %s.\n\r", tx_emergency.nodeid, tx_emergency.type);
+	        printf("[PROCESS_really_emergency] Emergency.\n\r");
 	    }
 	}
 
 	PROCESS_END();
 }
 
-//*************************Sensor Process*************************//
+//******Sensor Process******//
 PROCESS_THREAD (ext_sensors_process, ev, data) {
 
 	static struct etimer temp_reading_timer;
