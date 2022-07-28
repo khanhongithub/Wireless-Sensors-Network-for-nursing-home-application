@@ -62,7 +62,6 @@ int Need_Report(){
 	if (duty_cycle == 0){
 		true = 1;
 	}
-
 	return true;
 }
 
@@ -170,6 +169,21 @@ report_gateway *Prepare_Gate_Report(report_gateway *packet){
     	packet->node_list[i] = node_list[i];
     	packet->node_bool[i] = node_bool[i];
     	packet->node_status[i] = node_status[i];
+    }
+    return packet;
+}
+
+report_gateway *Prepare_Emergency_Report(report_gateway *packet){
+	int index = self_id - 1;
+    for (int i=0; i<6; i++){
+    	packet->node_list[i] = 0;
+    	packet->node_bool[i] = node_default[i];
+    	if (i == index){
+    		packet->node_status[i] = 3;
+    	}
+    	else{
+    		packet->node_status[i] = 9;
+    	}
     }
     return packet;
 }
