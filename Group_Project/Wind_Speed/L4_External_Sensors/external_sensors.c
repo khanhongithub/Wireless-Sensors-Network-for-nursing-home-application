@@ -39,11 +39,12 @@
 #include "dev/sys-ctrl.h"
 // Standard C includes:
 #include <stdio.h>      // For printf.
-#include <math.h>       // For round
+#include <stdlib.h>
 
 // Reading frequency in seconds.
-#define TEMP_READ_INTERVAL CLOCK_SECOND*2
+#define TEMP_READ_INTERVAL CLOCK_SECOND*0.2
 
+// The packet stucture
 typedef struct{
 	uint8_t node_list[6];
 	int node_bool[6];
@@ -51,17 +52,11 @@ typedef struct{
 }packet;
 
 /*** CONNECTION DEFINITION***/
-//static void unicast_recv(struct unicast_conn *c, const linkaddr_t *from);
-static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
-//static struct unicast_conn unicast;
-static struct broadcast_conn broadcastConn;
-//static const struct unicast_callbacks unicast_call = {unicast_recv};
-static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
+
 /**
  * Callback function for received packet processing.
  *
  */
-
 
 
 //function for outputting the lux value read from sensor
@@ -69,69 +64,60 @@ static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
     		//@param b: calibration value b inscribed on the back of the sensor
     		//@param adc_input: phidget input value. Use ZOUL_SENSORS_ADC1 or ZOUL_SENSORS_ADC3 depending on where the sensor is connected to.
     		//@return int : lux value with a max of 1000.
-static int getTempSensorValue(uint16_t adc_input){
-    		//Convert the voltage with the provided formula
-    		int temperature = (232.2*adc_input/2048)-66.111;
-    		//Return the value of the light with maximum value equal to 1000
-    		if (temperature<-30)
-			    return -30;
-    		else if (temperature>80)
-    			return 80;
-    		else
-    			return temperature;
-
-}
-
-static int getHumiSensorValue(uint16_t adc_input){
-    		//Convert the voltage with the provided formula
-    		int humidity = (190.6*adc_input/2048)-13.2;
-    		//Return the value of the light with maximum value equal to 1000
-    		if (humidity<10)
-    			return 10;
-    		else if (humidity>95)
-    		    return 95;
-    		else
-    		    return humidity;
-}
-
-static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
 
 
-}
+int windspeed_buffer[20];
+int i = 0;
+int n = 0;
+int wind_speed;
+
 /**
  * Connection information
  */
-//static struct broadcast_conn broadcastConn;
-
+//static void unicast_recv(struct unicast_conn *c, const linkaddr_t *from);
+static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
+//static struct unicast_conn unicast;
+static struct broadcast_conn broadcastConn;
+//static const struct unicast_callbacks unicast_call = {unicast_recv};
+static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 /**
  * Assign callback functions to the connection
  */
 //static const struct broadcast_callbacks broadcast_callbacks = {broadcast_recv};
+static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
 
+	leds_on(LEDS_GREEN);
+
+	uint8_t len = strlen( (char *)packetbuf_dataptr() );
+	int16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
+
+	printf("Got RX packet (broadcast) from: 0x%x%x, len: %d, RSSI: %d\r\n",from->u8[0], from->u8[1],len,rssi);
+
+	leds_off(LEDS_GREEN);
+}
 /*** CONNECTION DEFINITION END ***/
 
 //--------------------- PROCESS CONTROL BLOCK ---------------------
 PROCESS (ext_sensors_process, "External Sensors process");
+
 AUTOSTART_PROCESSES (&ext_sensors_process);
 
 
 //------------------------ PROCESS' THREAD ------------------------
 
+
 PROCESS_THREAD (ext_sensors_process, ev, data) {
 
 	/* variables to be used */
-	static struct etimer temp_reading_timer;
-	static uint16_t adc1_value, adc3_value;
 	linkaddr_t addr;
 	uint8_t gateway_id = 7;
+	static struct etimer temp_reading_timer;
 	packet packet_send;
-
-
 	for (int i=0; i<6; i++){
-		packet_send.node_list[i] = 9;
-		packet_send.node_bool[i] = 9;
+		packet_send.node_list[i] = 8;
+		packet_send.node_bool[i] = 8;
 	}
-
+	//static uint16_t adc1_value;
 	PROCESS_EXITHANDLER( broadcast_close(&broadcast_call); )
 	PROCESS_BEGIN ();
 
@@ -151,7 +137,7 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 
 
 	/* Configure the ADC ports */
-	adc_zoul.configure(SENSORS_HW_INIT, ZOUL_SENSORS_ADC1 | ZOUL_SENSORS_ADC3);
+	adc_zoul.configure(SENSORS_HW_INIT, ZOUL_SENSORS_ADC1);
 
 
 	etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
@@ -163,44 +149,45 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 		/* If timer expired, pront sensor readings */
 	    if(ev == PROCESS_EVENT_TIMER) {
 
-	    	leds_on(LEDS_GREEN);
+	    	//leds_on(LEDS_PURPLE);
 
 	    	/*
 	    	 * Read ADC values. Data is in the 12 MSBs
 	    	 */
-	    	adc1_value = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
-	    	adc3_value = adc_zoul.value(ZOUL_SENSORS_ADC3) >> 4;
+	    	windspeed_buffer[i] = adc_zoul.value(ZOUL_SENSORS_ADC1) >> 4;
 
-	    	/*
-	    	 * Print Raw values
-	    	 */
-
-	    	printf("\r\nADC1 value [Raw] = %d", adc1_value);
-	        printf("\r\nADC3 value [Raw] = %d", adc3_value);
-
-    		int Temp = getTempSensorValue(adc1_value);
-    		int Humi = getHumiSensorValue(adc3_value);
-
-    		printf("\r\nADC1 value [Reverted] = %d\n", Temp);
-    		printf("\r\nADC3 value [Reverted] = %d\n", Humi);
-
-    		packet_send.node_status[0] = Temp;
-    		packet_send.node_status[1] = Humi;
-    		packet_send.node_status[2] = 0;
-    		packet_send.node_status[3] = 0;
-    		packet_send.node_status[4] = 0;
-    		packet_send.node_status[5] = 0;
-
-    		addr.u8[0] = (gateway_id >> 8) & 0xFF;
-    		addr.u8[1] = gateway_id & 0xFF;
-
-    		packetbuf_copyfrom(&packet_send, 100);
-    		//unicast_send(&unicast, &addr);
-    		broadcast_send(&broadcastConn);
+	    	if (i>=19){
+	    		leds_on(LEDS_GREEN);
+	    		for (int j=0;j<19;j++)
+	    		{
+	    			if (windspeed_buffer[j+1]-windspeed_buffer[j]>1500){
+	    				n++;
+	    			}
+	    		}
+	    		wind_speed = n*0.6;
+	    		packet_send.node_status[0] = wind_speed;
+	    		addr.u8[0] = (gateway_id >> 8) & 0xFF;
+	    		addr.u8[1] = gateway_id & 0xFF;
 
 
 
-    		leds_off(LEDS_GREEN);
+	    		packetbuf_copyfrom(&packet_send, 100);
+	    		broadcast_send(&broadcastConn);
+
+	    		leds_off(LEDS_GREEN);
+
+                i = 0;
+                n = 0;
+	    		}
+
+	    	else{
+	            i++;
+	    	}
+
+
+
+    		//leds_off(LEDS_PURPLE);
+
 
     		etimer_set(&temp_reading_timer, TEMP_READ_INTERVAL);
 	    }
@@ -209,8 +196,6 @@ PROCESS_THREAD (ext_sensors_process, ev, data) {
 	PROCESS_END ();
 }
 
-
-//functions
 
 
 
