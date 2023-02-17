@@ -70,6 +70,7 @@ Therefore, during a fixed time period, the more times upper edges from low to hi
 # 2. Network and Rounting Technique
 
 We implemented our network based on Low-energy adaptive clustering hierarchy (LEACH) proposed by Heinzelman et al in 2000, and work done by Lewandowski et al in 2019.
+
 http://www.njavaid.com/LEACH.pdf
 
 https://www.mdpi.com/1424-8220/19/19/4060 
@@ -126,6 +127,7 @@ heart rate sensor and the colors of them show the connection
 state as well as health condition periodically. When any
 emergency button is pressed, the corresponding user in the topology graph will be noted as “!!!” to call supervisors for
 help
+
 ![](20230217144407.png)  
 
 Additionally, three display boxes upwards correspond to
