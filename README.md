@@ -17,7 +17,8 @@ obtained from the system.
 
 Zolertia mote: Lightweight and powerful IoT hardware development platform
 
-![](20230216135514.png)  
+
+![zolertia board](https://github.com/khanhongithub/Wireless-Sensors-Network-for-nursing-home-application/blob/master/Group_Project/20230216125522.png)
 
 The RE-Mote in a nutshell packs:
 
