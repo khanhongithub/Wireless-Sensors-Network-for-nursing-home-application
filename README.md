@@ -106,7 +106,7 @@ node program only needs to simply use printf function to send
 processed data steams towards GUI.
  ## GUI
 
-In the GUI designed by QT. To get the software for Linux-based computer, simply run these command:
+In the GUI designed by QT. To get the software for Ubuntu/Debian computer, simply run these command:
 
 ```
 sudo apt-get install build-essential
