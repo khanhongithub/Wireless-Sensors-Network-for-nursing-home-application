@@ -45,7 +45,8 @@ https://github.com/contiki-os/contiki/wiki
 ## External sensors
 
 ### Pulse sensor
-![](20230216155951.png)  
+
+![zolertia board](https://github.com/khanhongithub/Wireless-Sensors-Network-for-nursing-home-application/blob/master/Group_Project/20230216155951.png)
 
 6 pulse sensors are used to measure heart beat rate. Each has one LED and one light sensor on it, whenever the sensor is connect to the board through wire cable, the LED is on, the light sensor can measure reflected light intensity come from the LED to the attached surface. As a result, pulses with small amplitudes can be detected and tracked. In this case, it is attached on human fingers, and heart beat rate can be measured.
 
@@ -53,16 +54,18 @@ https://github.com/contiki-os/contiki/wiki
 
 ### Humidity and Temperature sensor
 
-![](20230216160252.png)  
+![H/T](https://github.com/khanhongithub/Wireless-Sensors-Network-for-nursing-home-application/blob/master/Group_Project/20230216160252.png)
 
 To measure temperature and humidity of environment, an embedded Humidity/Temperature sensor is implemented. 
 Two ports will generate a voltage corresponding to two environment metrics respectively. An ADC convert the analog voltage to 12 bit binary number, which is called "voltage ratio" - r. Then the temperature and humidity can be obtained buy functions of r given by datasheet.
 
 ### Wind speed sensor
 
-![](20230216185621.png)  
 
-![](20230216185746.png)  
+![W](https://github.com/khanhongithub/Wireless-Sensors-Network-for-nursing-home-application/blob/master/Group_Project/20230216185621.png)
+
+![W](https://github.com/khanhongithub/Wireless-Sensors-Network-for-nursing-home-application/blob/master/Group_Project/20230216185746.png)
+
 
 The wind speed sensor consists of an anemometer and a cable for data transmission. 
 Axis of the wind wheel, which plays as a switch in the circuit opening and closing according to the rotation angle. It will close twice each rotation round. When the switch is closed, GPIO pin is set to 5V, in contrast, when it opens, GPIO is set to GND, which is 0V.
@@ -129,7 +132,7 @@ state as well as health condition periodically. When any
 emergency button is pressed, the corresponding user in the topology graph will be noted as “!!!” to call supervisors for
 help
 
-![](20230217144407.png)  
+![GUI](https://github.com/khanhongithub/Wireless-Sensors-Network-for-nursing-home-application/blob/master/Group_Project/20230217144407.png)
 
 Additionally, three display boxes upwards correspond to
 three types of environmental factors. When relative packets
